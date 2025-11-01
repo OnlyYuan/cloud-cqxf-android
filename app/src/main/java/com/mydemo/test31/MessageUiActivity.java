@@ -241,6 +241,7 @@ public class MessageUiActivity extends AppCompatActivity {
             mDialog.dismiss();
             mDialog =null;
             Toast.makeText(this,"已挂断",Toast.LENGTH_SHORT).show();
+            loVideo.setVisibility(View.INVISIBLE);
             dismissConnectDialog();
             connectShow(false);
         }

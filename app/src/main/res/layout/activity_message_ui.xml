@@ -46,11 +46,14 @@
     </androidx.constraintlayout.widget.ConstraintLayout>
 
     <FrameLayout
-        android:id="@+id/loVideo"
         android:layout_width="match_parent"
-        android:layout_height="600dp"
-        android:background="@color/cardview_dark_background">
+        android:layout_height="600dp">
 
+        <FrameLayout
+            android:id="@+id/loVideo"
+            android:layout_width="match_parent"
+            android:layout_height="600dp"
+            android:background="@color/cardview_dark_background"/>
 
     </FrameLayout>
 

@@ -260,6 +260,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
             useName = user;
             passWord = password;
+            isH5Login = true;
             startLogin();
         }
 

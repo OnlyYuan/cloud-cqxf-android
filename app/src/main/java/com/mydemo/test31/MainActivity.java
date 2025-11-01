@@ -247,6 +247,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
         }
 
+
+        /**
+         * 进入到视频界面
+         * @param user   对方账号名
+         * @param mCallType   通话类型 0.语音 1.视频
+         */
+        @JavascriptInterface
+        public void startCallUi(String user,int mCallType) {
+            Toast.makeText(MainActivity.this, "用户名：" + user + "通话类型： " + mCallType, Toast.LENGTH_SHORT).show();
+            goMessageUiFun(user,mCallType);
+        }
+
         /**
          * 示例3：原生调用 JS 方法（反向调用）
          */
@@ -344,14 +356,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
     //不要用我司终端运行此工程，因为缺少一些终端适配相关的包，会导致有问题
     private void startLogin(){
-//        PnasUserUtil.getInstance().login("60020590@poc.com","123456","10.161.42.158:8062",null);
         PnasUserUtil.getInstance().login("50120201@poc.com","cq123456","113.204.49.3:8062",null);
-
-//        if(PnasCallUtil.getInstance().getCameraId() == CameraId.CAMERA_BACK){
-//            PnasCallUtil.getInstance().forceCameraOrientation(90);
-//        }else{
-//            PnasCallUtil.getInstance().forceCameraOrientation(180);
-//        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -583,6 +588,20 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }).create();
         mDialog.setCanceledOnTouchOutside(false);
         mDialog.show();
+    }
+
+
+    /**
+     * 进入到视频界面
+     * @param Udn   对方账号名
+     * @param mCallType   通话类型 0.语音 1.视频
+     */
+    private void goMessageUiFun(String Udn,int mCallType){
+        callType = mCallType;
+        Intent intent = new Intent(MainActivity.this,MessageUiActivity.class);
+        intent.putExtra("account",Udn);
+        intent.putExtra("callType",callType);
+        startActivity(intent);
     }
 
 }

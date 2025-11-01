@@ -50,6 +50,8 @@ public class MessageUiActivity extends AppCompatActivity {
     private FrameLayout loVideo =null;
     private SurfaceView renderView;
     private  AlertDialog mDialog = null;
+    //等待对方接听的等待弹窗
+    private  AlertDialog connecttingDialog = null;
     private int callType = 0;//创建连接的方式 0.语音 1.视频
     private int comeType = 0;//进入方式方式，0.根据列表进入 1.接收电话进入
 
@@ -127,6 +129,8 @@ public class MessageUiActivity extends AppCompatActivity {
         connectBtn.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                connectShow(true);
+                connectDialog();
                 createLink();
             }
         });
@@ -227,6 +231,7 @@ public class MessageUiActivity extends AppCompatActivity {
                 }
                 mDialog =null;
                 connectShow(true);
+                dismissConnectDialog();
                 if(callSession.isVideoCall()){//视频通话
                     loVideo.setVisibility(View.VISIBLE);
                 }
@@ -236,6 +241,7 @@ public class MessageUiActivity extends AppCompatActivity {
             mDialog.dismiss();
             mDialog =null;
             Toast.makeText(this,"已挂断",Toast.LENGTH_SHORT).show();
+            dismissConnectDialog();
             connectShow(false);
         }
     }
@@ -275,6 +281,26 @@ public class MessageUiActivity extends AppCompatActivity {
         }
     }
 
+    private void connectDialog(){
+        if (connecttingDialog !=null){
+            return;
+        }
+        // 创建对话框构建器
+        connecttingDialog = new AlertDialog
+                .Builder(this)
+                .setTitle("连接中")
+                .setMessage("等待对方接听...")
+                .create();
+        connecttingDialog.setCanceledOnTouchOutside(true);
+        connecttingDialog.show();
+    }
+
+    private void dismissConnectDialog(){
+        if (connecttingDialog !=null){
+            connecttingDialog.dismiss();
+            connecttingDialog=null;
+        }
+    }
     /**
      * 来电弹窗
      */

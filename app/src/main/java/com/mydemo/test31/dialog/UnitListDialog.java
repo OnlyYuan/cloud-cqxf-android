@@ -1,0 +1,119 @@
+package com.mydemo.test31.dialog;
+
+import android.app.Dialog;
+import android.os.Bundle;
+import android.util.Log;
+import android.view.Gravity;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
+import android.widget.TextView;
+
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
+import androidx.fragment.app.DialogFragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
+import com.mpttpnas.api.TrunkingGroupContact;
+import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
+import com.mydemo.test31.R;
+import com.mydemo.test31.adapter.OptionAdapter;
+
+import java.util.List;
+
+public class UnitListDialog extends DialogFragment {
+
+    private OnOptionSelectedListener mListener;
+
+    private String TAG = "UnitListDialog";
+    // 选择结果回调接口
+    public interface OnOptionSelectedListener {
+        void onOptionSelected(TrunkingGroupContact item);
+    }
+
+    // 设置回调监听器
+    public void setOnOptionSelectedListener(OnOptionSelectedListener listener) {
+        mListener = listener;
+    }
+
+    @Nullable
+    @Override
+    public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
+        // 加载弹窗布局
+        View view = inflater.inflate(R.layout.unit_dialog, container, false);
+        initView(view);
+        return view;
+    }
+
+    private void initView(View view) {
+        // 初始化RecyclerView
+        RecyclerView rvOptions = view.findViewById(R.id.rv_options);
+        rvOptions.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        // 模拟数据
+//        List<OptionItem> optionList = new ArrayList<>();
+//        optionList.add(new OptionItem(1, "选项一"));
+//        optionList.add(new OptionItem(2, "选项二"));
+//        optionList.add(new OptionItem(3, "选项三"));
+//        optionList.add(new OptionItem(4, "选项四"));
+//        optionList.add(new OptionItem(5, "选项五"));
+//        optionList.add(new OptionItem(6, "选项六"));
+        List<TrunkingGroupContact> unitList = getUnitList();
+
+        // 设置适配器
+        OptionAdapter adapter = new OptionAdapter(unitList, item -> {
+            // 触发回调并关闭弹窗
+            if (mListener != null) {
+                mListener.onOptionSelected(item);
+            }
+            dismiss();
+        });
+        rvOptions.setAdapter(adapter);
+
+        // 取消按钮
+        TextView btnCancel = view.findViewById(R.id.btn_cancel);
+        btnCancel.setOnClickListener(v -> dismiss());
+    }
+
+    // 设置弹窗属性
+    @Override
+    public void onStart() {
+        super.onStart();
+        Dialog dialog = getDialog();
+        if (dialog != null) {
+            Window window = dialog.getWindow();
+            if (window != null) {
+                // 底部显示 + 宽度全屏
+                window.setGravity(Gravity.BOTTOM);
+                window.setLayout(WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT);
+                // 动画效果
+                window.setWindowAnimations(R.style.BottomSheetAnimation);
+                // 背景透明
+                window.setBackgroundDrawableResource(android.R.color.transparent);
+            }
+            // 点击外部可关闭
+            dialog.setCanceledOnTouchOutside(true);
+        }
+    }
+
+    // 创建实例
+    public static UnitListDialog newInstance() {
+        return new UnitListDialog();
+    }
+
+    /**
+     * 获取单位列表
+     * @return
+     */
+    private List<TrunkingGroupContact> getUnitList(){
+        List<TrunkingGroupContact> list =  PnasContactUtil.getInstance().getMyGroupList();
+        for (int i = 0 ;i<list.size();i++){
+            Log.d(TAG,"列表数据："+list.get(i).toString());
+        }
+        return  list;
+    }
+
+}

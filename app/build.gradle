@@ -1,0 +1,79 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    signingConfigs {
+
+        release {
+            storeFile file('E:\\work1\\cloud-cqxf-android\\key1.jks')
+            storePassword '1234567'
+            keyAlias 'key0'
+            keyPassword '1234567'
+        }
+    }
+    compileSdkVersion 30
+    buildToolsVersion "30.0.3"
+
+    defaultConfig {
+        applicationId "com.mydemo.test31"
+        minSdkVersion 23
+        targetSdkVersion 30
+        versionCode 1
+        versionName "1.0"
+
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        ndk {
+            abiFilters 'armeabi-v7a'  //兼容x86cpu架构  需要什么样的架构就添加什么样的
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
+}
+
+dependencies {
+    implementation 'androidx.constraintlayout:constraintlayout:2.0.4'
+    //
+    implementation 'androidx.appcompat:appcompat:1.3.0'
+    implementation 'androidx.recyclerview:recyclerview:1.2.0'
+    implementation 'androidx.legacy:legacy-support-v4:1.0.0'
+    implementation 'com.google.android.material:material:1.3.0'
+    implementation 'com.davemorrissey.labs:subsampling-scale-image-view:3.10.0'
+
+    implementation 'androidx.lifecycle:lifecycle-extensions:2.2.0'
+    implementation 'androidx.lifecycle:lifecycle-runtime:2.3.1'
+
+    implementation files('libs/MediaEngineLibrary-3.1.02.aar')
+    implementation files('libs/pnaslibrary-3.1.02.aar')
+
+    implementation files('libs/yl_help.aar')
+    implementation files('libs/xmpp.jar')
+    implementation 'com.google.android.gms:play-services-maps:17.0.1'
+
+    implementation 'pub.devrel:easypermissions:3.0.0'
+    implementation 'com.github.bumptech.glide:glide:4.12.0'
+    implementation 'com.github.bumptech.glide:okhttp3-integration:4.12.0'
+    //glide https支持库 用本地代码
+    annotationProcessor 'com.github.bumptech.glide:compiler:4.12.0'
+
+    api 'org.greenrobot:greendao:3.2.2'
+    api 'com.google.code.gson:gson:2.8.6'
+    api 'org.greenrobot:eventbus:3.2.0'
+    api 'com.squareup.okhttp3:okhttp:3.10.0'
+    api 'com.squareup.okio:okio:1.14.0'
+    api 'net.lingala.zip4j:zip4j:1.3.1'
+    api 'com.belerweb:pinyin4j:2.5.0'
+    api 'net.zetetic:android-database-sqlcipher:3.5.3'
+    api "androidx.sqlite:sqlite:2.1.0"
+    api 'io.netty:netty-all:4.1.65.Final'
+}

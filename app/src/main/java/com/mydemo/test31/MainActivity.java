@@ -1,6 +1,7 @@
 package com.mydemo.test31;
 
 import static com.mydemo.test31.util.Util.h5Url;
+import static com.mydemo.test31.util.Util.pocUrl;
 
 import android.app.Activity;
 import android.app.AlertDialog;
@@ -126,6 +127,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private SurfaceView renderView;
 
     private int callType = 0 ;//建立连接方式 0.语音  1.视频
+
+    //判断poc是否初始化完成
+    private boolean isInitPnasUserUtilSuccess = false;
+    //h5是否调用了登录
+    private boolean isH5Login = false;
+
+    //h5传入的用户名
+    private String useName = "";
+
+    //h5传入的密码
+    private String passWord = "";
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate() called with: savedInstanceState = [" + savedInstanceState + "]");
@@ -245,6 +258,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         @JavascriptInterface
         public void loginPoc(String user, String password) {
             Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
+            useName = user;
+            passWord = password;
+            startLogin();
         }
 
 
@@ -349,14 +365,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onStackStartSuccessCallbackEvent(StackStartSuccessCallbackEvent event){
         if (event.getIsSuccess() == 1) {
+            isInitPnasUserUtilSuccess =true;
             startLogin();
         } else { //sip start fail
+            isInitPnasUserUtilSuccess =false;
             finish();
         }
     }
     //不要用我司终端运行此工程，因为缺少一些终端适配相关的包，会导致有问题
     private void startLogin(){
-        PnasUserUtil.getInstance().login("50120201@poc.com","cq123456","113.204.49.3:8062",null);
+        if (isInitPnasUserUtilSuccess&&isH5Login){
+            Log.i(TAG,"登录的信息 用户名：" + useName + "密码： " + passWord);
+            PnasUserUtil.getInstance().login(useName,passWord,pocUrl,null);
+        }
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)

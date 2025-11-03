@@ -26,12 +26,16 @@ import com.mydemo.test31.adapter.MemberAdapter;
 
 import java.util.List;
 
+/**
+ * 部门人员
+ */
 public class MemberListDialog extends DialogFragment {
     private String TAG = "MemberListDialog";
     private OnOptionSelectedListener mListener;
     private TrunkingGroupContact trunkingGroupContact;
+
     public MemberListDialog(TrunkingGroupContact mTrunkingGroupContact) {
-        this.trunkingGroupContact =  mTrunkingGroupContact ;
+        this.trunkingGroupContact = mTrunkingGroupContact;
     }
 
     // 选择结果回调接口
@@ -99,14 +103,14 @@ public class MemberListDialog extends DialogFragment {
 
     /**
      * 获取成员列表
+     *
      * @return groupGdn 组列表  list.get(0).getGroupGdn()
      */
-    private List<TrunkingLocalContact>  getMemberList(String groupGdn){
+    private List<TrunkingLocalContact> getMemberList(String groupGdn) {
         List<TrunkingLocalContact> memberList = PnasContactUtil
-                .getInstance()
-                .getGroupContactList(groupGdn);
-        for (int i = 0 ;i<memberList.size();i++){
-            Log.d(TAG,"成员数据："+memberList.get(i).getName());
+                .getInstance().getGroupContactList(groupGdn);
+        for (int i = 0; i < memberList.size(); i++) {
+            Log.d(TAG, "成员数据：" + memberList.get(i).getName());
         }
         return memberList;
     }

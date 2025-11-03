@@ -18,6 +18,9 @@ import androidx.fragment.app.DialogFragment;
 
 import com.mydemo.test31.R;
 
+/**
+ * 选择通话方式
+ */
 public class LinkWayDialog extends DialogFragment {
     private OnLinkWaySelectedListener mListener;
 

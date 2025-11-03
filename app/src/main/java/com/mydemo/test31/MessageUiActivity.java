@@ -21,15 +21,18 @@ import com.mpttpnas.api.TrunkingMessage;
 import com.mpttpnas.pnas.agent.PnasErrorCode;
 import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
-import com.mpttpnas.pnaslibraryapi.callback.CallStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.FloorStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GroupAffiliactionNotifyResultCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent;
+import com.mydemo.test31.event.CloseVideoActivityEvent;
+import com.mydemo.test31.event.OpenVideoActivityEvent;
 import com.mydemo.test31.util.MicMuteManager;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+
+import java.util.Objects;
 
 public class MessageUiActivity extends AppCompatActivity {
 
@@ -37,31 +40,31 @@ public class MessageUiActivity extends AppCompatActivity {
     //连接对象的账户名
     private String accountString = "";
     //连接
-    private Button connectBtn =null;
+    private Button connectBtn = null;
     //断开
-    private Button cancelBtn =null;
+    private Button cancelBtn = null;
     //麦克风
-    private ImageView micBtn =null;
+    private ImageView micBtn = null;
     //音量
-    private ImageView voiceBtn =null;
-    private ImageView closeBtn =null;
+    private ImageView voiceBtn = null;
+    private ImageView closeBtn = null;
 
-    //视频通话区域
-    private FrameLayout loVideo =null;
+    // 视频通话区域
+    private FrameLayout loVideo = null;
     private SurfaceView renderView;
-    private  AlertDialog mDialog = null;
+    private AlertDialog mDialog = null;
     //等待对方接听的等待弹窗
-    private  AlertDialog connecttingDialog = null;
+    private AlertDialog connecttingDialog = null;
     private int callType = 0;//创建连接的方式 0.语音 1.视频
     private int comeType = 0;//进入方式方式，0.根据列表进入 1.接收电话进入
 
-    //声音开关状态  true是开  false是关
+    // 声音开关状态  true是开  false是关
     private boolean isVoiceOn = true;
 
-    //mic的状态  true是禁音，false未禁音
+    // mic的状态  true是禁音，false未禁音
     private boolean isMicMuted = true;
     // 在 Activity 中使用
-    MicMuteManager micManager =null;
+    MicMuteManager micManager = null;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -74,20 +77,19 @@ public class MessageUiActivity extends AppCompatActivity {
 
     private void initData() {
         accountString = getIntent().getStringExtra("account");
-        callType = getIntent().getIntExtra("callType",0);
-        comeType = getIntent().getIntExtra("comeType",0);
-        if (comeType==1){
-            callSession =  getIntent().getParcelableExtra("callSession");
-            accountString =callSession.getGroupCallUdn();
-            Log.i(TAG,"-->account getRemoteContact:"+callSession.getRemoteContact()
-                +"getCallState:"+callSession.getCallState() +"name"
+        callType = getIntent().getIntExtra("callType", 0);
+        comeType = getIntent().getIntExtra("comeType", 0);
+        if (comeType == 1) {
+            callSession = getIntent().getParcelableExtra("callSession");
+            accountString = callSession.getGroupCallUdn();
+            Log.i(TAG, "-->account getRemoteContact:" + callSession.getRemoteContact()
+                    + "getCallState:" + callSession.getCallState() + "name"
             );
             accountString = callSession.getRemoteContact();
-
             acceptCall();
         }
         EventBus.getDefault().register(this);
-        Log.i(TAG,"--->account:"+accountString +"callType:" +callType +"comeType" +comeType);
+        Log.i(TAG, "--->account:" + accountString + "callType:" + callType + "comeType" + comeType);
         // 在 Activity 中使用
         micManager = new MicMuteManager(this);
         isMicMuted = micManager.isMicMuted();
@@ -102,7 +104,8 @@ public class MessageUiActivity extends AppCompatActivity {
         voiceBtn = findViewById(R.id.voice_Btn);
         closeBtn = findViewById(R.id.close_btn);
         renderView = new SurfaceView(this);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT);
+        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
         lp.gravity = Gravity.CENTER;
         renderView.setLayoutParams(lp);
         renderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
@@ -113,84 +116,66 @@ public class MessageUiActivity extends AppCompatActivity {
 
     /**
      * 连接和取消按钮的显示隐藏
-     * @param isConnect
      */
-    private void connectShow(Boolean isConnect){
-        if (isConnect){
+    private void connectShow(Boolean isConnect) {
+        if (isConnect) {
             connectBtn.setVisibility(View.GONE);
             cancelBtn.setVisibility(View.VISIBLE);
-        }else{
+        } else {
             connectBtn.setVisibility(View.VISIBLE);
             cancelBtn.setVisibility(View.GONE);
         }
     }
+
     private void initListener() {
-
-        connectBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                connectShow(true);
-                connectDialog();
-                createLink();
-            }
+        connectBtn.setOnClickListener(view -> {
+            connectShow(true);
+            connectDialog();
+            createLink();
         });
 
-        cancelBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                // 挂断
-                PnasCallUtil.getInstance().hangupActiveCall();
-                connectShow(false);
-            }
+        cancelBtn.setOnClickListener(v -> {
+            // 挂断
+            PnasCallUtil.getInstance().hangupActiveCall();
+            connectShow(false);
         });
 
-        voiceBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
+        voiceBtn.setOnClickListener(v -> {
 
-            }
         });
 
-        micBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                setMicFun();
-            }
-        });
+        micBtn.setOnClickListener(v -> setMicFun());
 
-        closeBtn.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                MessageUiActivity.this.finish();
-            }
+        closeBtn.setOnClickListener(v -> {
+            PnasCallUtil.getInstance().hangupActiveCall();
+            MessageUiActivity.this.finish();
         });
 
     }
 
-    private void setMicFun(){
-
-        if (isMicMuted){
-            //麦克风禁音
+    private void setMicFun() {
+        if (isMicMuted) {
+            // 麦克风禁音
             micManager.muteMic();
-        }else {
-            //麦克风打开
+        } else {
+            // 麦克风打开
             micManager.unmuteMic();
-
         }
-
     }
 
-    private void setVoiceNumFun(){
+    private void setVoiceNumFun() {
 
     }
 
     /**
      * 创建连接通话
      */
-    private  void createLink(){
-        if (callType == 1){//视频连接
+    private void createLink() {
+        if (callType == 1) {
+            // 视频连接
             videoLink();
-        }else {//音频连接
+        } else {
+            //音频连接
             voiceLink();
         }
     }
@@ -198,92 +183,69 @@ public class MessageUiActivity extends AppCompatActivity {
     /**
      * 音频连接
      */
-    private void voiceLink(){
-        if(PnasContactUtil.getInstance().isGroupNumber(accountString)){
-            PnasCallUtil.getInstance().makeCallWithOptions(accountString,false, TrunkingCallSession.CallTypeDesc.CALLTYPE_VOICE_GROUP,false,false,false,1);
-        }else {
-            PnasCallUtil.getInstance().makeCallWithOptions(accountString, false, TrunkingCallSession.CallTypeDesc.CALLTYPE_FULL_DUPLEX_VOICE, false, false, false, 1);
+    private void voiceLink() {
+        if (PnasContactUtil.getInstance().isGroupNumber(accountString)) {
+            PnasCallUtil.getInstance().makeCallWithOptions(accountString, false,
+                    TrunkingCallSession.CallTypeDesc.CALLTYPE_VOICE_GROUP, false, false, false, 1);
+        } else {
+            PnasCallUtil.getInstance().makeCallWithOptions(accountString, false,
+                    TrunkingCallSession.CallTypeDesc.CALLTYPE_FULL_DUPLEX_VOICE, false, false, false, 1);
         }
     }
 
     /**
      * 视频链接
      */
-    private void videoLink(){
-        if(PnasContactUtil.getInstance().isGroupNumber(accountString)){
-            PnasCallUtil.getInstance().makeCallWithOptions(accountString,false, TrunkingCallSession.CallTypeDesc.CALLTYPE_VIDEO_GROUP,false,false,false,1);
-        }else{
-            PnasCallUtil.getInstance().makeCallWithOptions(accountString,false,TrunkingCallSession.CallTypeDesc.CALLTYPE_VIDEO,false,false,false,1);
+    private void videoLink() {
+        if (PnasContactUtil.getInstance().isGroupNumber(accountString)) {
+            PnasCallUtil.getInstance().makeCallWithOptions(accountString, false,
+                    TrunkingCallSession.CallTypeDesc.CALLTYPE_VIDEO_GROUP, false, false, false, 1);
+        } else {
+            PnasCallUtil.getInstance().makeCallWithOptions(accountString, false,
+                    TrunkingCallSession.CallTypeDesc.CALLTYPE_VIDEO, false, false, false, 1);
         }
     }
 
     TrunkingCallSession callSession;
-    @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onCallStateChangedCallbackEvent(CallStateChangedCallbackEvent event){
-        callSession = event.getCallSession();
-        if(callSession != null && !callSession.isAfterEnded()){
-            if(callSession.isIncoming() && callSession.isBeforeConfirmed()){
-                Log.i(TAG,"--->还未接听");
-                acceptDialog();
-            }else{
-                if (mDialog!=null){
-                    mDialog.dismiss();
-                }
-                mDialog =null;
-                connectShow(true);
-                dismissConnectDialog();
-                if(callSession.isVideoCall()){//视频通话
-                    loVideo.setVisibility(View.VISIBLE);
-                }
-            }
-        }else{
-            Log.i(TAG,"挂断了");
-            mDialog.dismiss();
-            mDialog =null;
-            Toast.makeText(this,"已挂断",Toast.LENGTH_SHORT).show();
-            loVideo.setVisibility(View.INVISIBLE);
-            dismissConnectDialog();
-            connectShow(false);
-        }
-    }
+
 
     //话权变化回调
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onFloorStateChangedCallbackEvent(FloorStateChangedCallbackEvent event) {
-        Log.d("onFloorState","" + event.getCallSession().getIsinfo());
+        Log.d("onFloorState", "" + event.getCallSession().getIsinfo());
     }
 
     //话权变化回调
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onGroupAffiliactionNotifyResultCallbackEvent(GroupAffiliactionNotifyResultCallbackEvent event) {
-        Log.d("GroupAffi","" + event.getGroupNumber() + "," + event.isSuccess());
+        Log.d("GroupAffi", "" + event.getGroupNumber() + "," + event.isSuccess());
     }
 
 
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onStandbyGroupInfoChangedCallbackEvent(StandbyGroupInfoChangedCallbackEvent event){
-        if(event.getTrunkingGroupContact() != null) {
-            Log.i(TAG,"守候组：" + event.getTrunkingGroupContact().getGroupName());
-        }else{
-            Log.i(TAG,"无守候组");
+    public void onStandbyGroupInfoChangedCallbackEvent(StandbyGroupInfoChangedCallbackEvent event) {
+        if (event.getTrunkingGroupContact() != null) {
+            Log.i(TAG, "守候组：" + event.getTrunkingGroupContact().getGroupName());
+        } else {
+            Log.i(TAG, "无守候组");
         }
         TrunkingConversation conversation;
         TrunkingMessage message;
         PnasErrorCode errorCode;
-//        PnasContactUtil.getInstance().getAllUserContactList()
+        // PnasContactUtil.getInstance().getAllUserContactList()
     }
 
     /**
      * 接收链接
      */
-    private void acceptCall(){
-        if(callSession!=null && callSession.isIncoming() && callSession.isBeforeConfirmed()) {
+    private void acceptCall() {
+        if (callSession != null && callSession.isIncoming() && callSession.isBeforeConfirmed()) {
             PnasCallUtil.getInstance().acceptCall(callSession.getCallId());
         }
     }
 
-    private void connectDialog(){
-        if (connecttingDialog !=null){
+    private void connectDialog() {
+        if (Objects.nonNull(connecttingDialog)) {
             return;
         }
         // 创建对话框构建器
@@ -296,25 +258,24 @@ public class MessageUiActivity extends AppCompatActivity {
         connecttingDialog.show();
     }
 
-    private void dismissConnectDialog(){
-        if (connecttingDialog !=null){
+    private void dismissConnectDialog() {
+        if (Objects.nonNull(connecttingDialog)) {
             connecttingDialog.dismiss();
-            connecttingDialog=null;
+            connecttingDialog = null;
         }
     }
+
     /**
      * 来电弹窗
      */
     private void acceptDialog() {
-
         String title = "";
-
-        if(callSession.isVideoCall()){
-            title =   "视频来电";
-        }else{
-            title =  "语音来电";
+        if (callSession.isVideoCall()) {
+            title = "视频来电";
+        } else {
+            title = "语音来电";
         }
-        if (mDialog !=null){
+        if (mDialog != null) {
             return;
         }
         // 创建对话框构建器
@@ -328,6 +289,7 @@ public class MessageUiActivity extends AppCompatActivity {
                         // 点击确定后的逻辑
                         acceptCall();
                         dialog.dismiss(); // 关闭对话框
+                        dismissConnectDialog();
                     }
                 })
                 .setNegativeButton("挂断", new DialogInterface.OnClickListener() {
@@ -346,11 +308,52 @@ public class MessageUiActivity extends AppCompatActivity {
     @Override
     protected void onDestroy() {
         super.onDestroy();
-        if(micManager!=null){
+        if (micManager != null) {
             micManager.unmuteMic();
         }
         EventBus.getDefault().unregister(this);
     }
 
+    /**
+     * 开始建立连接
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onOpenMessageEvent(OpenVideoActivityEvent event) {
+        callSession = event.getCallSession();
+        if (Objects.isNull(callSession)) {
+            return;
+        }
+
+        if (!callSession.isAfterEnded() && (callSession.getCallState() == 4
+                || callSession.getCallState() == 5)) {
+            AlertDialog alertDialog = event.getAlertDialog();
+            if (Objects.nonNull(event.getAlertDialog())) {
+                alertDialog.dismiss();
+                alertDialog = null;
+            }
+            dismissConnectDialog();
+            connectShow(true);
+            if (callSession.isVideoCall()) {
+                //  视频通话
+                loVideo.setVisibility(View.VISIBLE);
+            }
+        }
+    }
+
+    /**
+     * 关闭连接
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onCloseMessageEvent(CloseVideoActivityEvent event) {
+        callSession = event.getCallSession();
+        if (Objects.isNull(callSession) || callSession.isAfterEnded()) {
+            Log.i(TAG, "挂断了");
+            Toast.makeText(this, "已挂断", Toast.LENGTH_SHORT).show();
+            loVideo.setVisibility(View.INVISIBLE);
+            dismissConnectDialog();
+            connectShow(false);
+            finish();
+        }
+    }
 
 }

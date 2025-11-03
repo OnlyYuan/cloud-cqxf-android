@@ -24,17 +24,25 @@ import com.mydemo.test31.adapter.OptionAdapter;
 
 import java.util.List;
 
+/**
+ * 单位
+ */
 public class UnitListDialog extends DialogFragment {
 
     private OnOptionSelectedListener mListener;
 
     private String TAG = "UnitListDialog";
-    // 选择结果回调接口
+
+    /**
+     * 选择结果回调接口
+     */
     public interface OnOptionSelectedListener {
         void onOptionSelected(TrunkingGroupContact item);
     }
 
-    // 设置回调监听器
+    /**
+     * 设置回调监听器
+     */
     public void setOnOptionSelectedListener(OnOptionSelectedListener listener) {
         mListener = listener;
     }
@@ -54,13 +62,13 @@ public class UnitListDialog extends DialogFragment {
         rvOptions.setLayoutManager(new LinearLayoutManager(getContext()));
 
         // 模拟数据
-//        List<OptionItem> optionList = new ArrayList<>();
-//        optionList.add(new OptionItem(1, "选项一"));
-//        optionList.add(new OptionItem(2, "选项二"));
-//        optionList.add(new OptionItem(3, "选项三"));
-//        optionList.add(new OptionItem(4, "选项四"));
-//        optionList.add(new OptionItem(5, "选项五"));
-//        optionList.add(new OptionItem(6, "选项六"));
+        // List<OptionItem> optionList = new ArrayList<>();
+        // optionList.add(new OptionItem(1, "选项一"));
+        // optionList.add(new OptionItem(2, "选项二"));
+        // optionList.add(new OptionItem(3, "选项三"));
+        // optionList.add(new OptionItem(4, "选项四"));
+        // optionList.add(new OptionItem(5, "选项五"));
+        // optionList.add(new OptionItem(6, "选项六"));
         List<TrunkingGroupContact> unitList = getUnitList();
 
         // 设置适配器
@@ -72,7 +80,6 @@ public class UnitListDialog extends DialogFragment {
             dismiss();
         });
         rvOptions.setAdapter(adapter);
-
         // 取消按钮
         TextView btnCancel = view.findViewById(R.id.btn_cancel);
         btnCancel.setOnClickListener(v -> dismiss());
@@ -106,7 +113,6 @@ public class UnitListDialog extends DialogFragment {
 
     /**
      * 获取单位列表
-     * @return
      */
     private List<TrunkingGroupContact> getUnitList(){
         List<TrunkingGroupContact> list =  PnasContactUtil.getInstance().getMyGroupList();
@@ -116,4 +122,10 @@ public class UnitListDialog extends DialogFragment {
         return  list;
     }
 
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        // 清除引用，防止内存泄漏
+        mListener = null;
+    }
 }

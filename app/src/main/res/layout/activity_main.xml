@@ -1,6 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:app="http://schemas.android.com/apk/res-auto"
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
@@ -9,129 +8,10 @@
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
-
         <WebView
             android:id="@+id/webView"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
-
+            android:layout_height="match_parent" />
     </FrameLayout>
-
-    <LinearLayout
-        android:orientation="vertical"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:visibility="gone">
-
-        <TextView
-            android:id="@+id/tvStandbyGroup"
-            android:text="无守候组"
-            android:textSize="18sp"
-            android:gravity="center"
-            android:layout_width="match_parent"
-            android:layout_height="40dp"/>
-
-        <TextView
-            android:id="@+id/tvPtt"
-            android:text="PTT"
-            android:textSize="20sp"
-            android:gravity="center"
-            android:background="#6ddd"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"
-            android:visibility="gone"/>
-
-        <TextView
-            android:id="@+id/goDialogBtn"
-            android:text="选择连接方式"
-            android:textSize="20sp"
-            android:gravity="center"
-            android:background="#6ddd"
-            android:layout_width="match_parent"
-            android:layout_height="60dp"/>
-
-
-        <RelativeLayout
-            android:id="@+id/loCall"
-            android:background="#6eef"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:visibility="gone">
-
-            <EditText
-                android:id="@+id/etCallNumber"
-                android:layout_centerVertical="true"
-                android:hint="输入呼叫号码"
-                android:layout_marginStart="10dp"
-                android:layout_width="150dp"
-                android:layout_height="wrap_content"/>
-
-            <Button
-                android:id="@+id/btnVoiceCall"
-                android:layout_toEndOf="@+id/etCallNumber"
-                android:text="语音"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="10dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <Button
-                android:id="@+id/btnVideoCall"
-                android:layout_toEndOf="@+id/btnVoiceCall"
-                android:text="视频"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="10dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-        </RelativeLayout>
-
-        <RelativeLayout
-            android:id="@+id/loIncomingCall"
-            android:background="#6eed"
-            android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:visibility="gone">
-
-            <TextView
-                android:id="@+id/tvCallInfo"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="10dp"
-                android:layout_width="150dp"
-                android:layout_height="wrap_content"/>
-
-            <Button
-                android:id="@+id/btnAccept"
-                android:layout_toEndOf="@+id/tvCallInfo"
-                android:text="接听"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="10dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-            <Button
-                android:id="@+id/btnHangup"
-                android:layout_toEndOf="@+id/btnAccept"
-                android:text="挂断"
-                android:layout_centerVertical="true"
-                android:layout_marginStart="10dp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"/>
-
-        </RelativeLayout>
-
-        <RelativeLayout
-            android:layout_width="200dp"
-            android:layout_height="match_parent">
-            <FrameLayout
-                android:id="@+id/loVideo"
-                android:layout_width="match_parent"
-                android:layout_height="match_parent"/>
-        </RelativeLayout>
-
-    </LinearLayout>
-
-
-
 
 </RelativeLayout>

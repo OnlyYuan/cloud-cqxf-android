@@ -16,18 +16,27 @@ public class VideoSurfaceCallback implements SurfaceHolder.Callback {
         this.type = type;
     }
 
+    /**
+     * 设置视频窗口
+     */
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.e(THIS_FILE, "set surface: " + holder.getSurface() + ", type: " + type);
-//        PnasCallUtil.getInstance().setSurface(holder.getSurface(), type);
+        PnasCallUtil.getInstance().setSurface(holder.getSurface(), type);
     }
 
+    /**
+     * 视频窗口变化
+     */
     @Override
     public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
         Log.e(THIS_FILE, "surfaceChanged width: " + width + ", height: " + height);
         PnasCallUtil.getInstance().surfaceChanged(type, holder.getSurface(), width, height);
     }
 
+    /**
+     * 视频窗口销毁
+     */
     @Override
     public void surfaceDestroyed(SurfaceHolder holder) {
         Log.e(THIS_FILE, "surfaceDestroyed");

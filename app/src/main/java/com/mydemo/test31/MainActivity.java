@@ -48,6 +48,7 @@ import com.mpttpnas.pnaslibraryapi.callback.FloorStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GroupAffiliactionNotifyResultCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StackStartSuccessCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent;
+import com.mydemo.test31.dialog.CallReminderDialog;
 import com.mydemo.test31.dialog.LinkWayDialog;
 import com.mydemo.test31.dialog.MemberListDialog;
 import com.mydemo.test31.dialog.UnitListDialog;
@@ -388,14 +389,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 if (callSession.isVideoCall()) {
                     OpenVideoActivityEvent openVideoActivityEvent = new OpenVideoActivityEvent(event.callId,
                             event.callSession);
-                    openVideoActivityEvent.setAlertDialog(mDialog);
+                    openVideoActivityEvent.setCallReminderDialog(callReminderDialog);
                     EventBus.getDefault().post(openVideoActivityEvent);
                 }
             }
         } else {
-            if (Objects.nonNull(mDialog)) {
-                mDialog.dismiss();
-                mDialog = null;
+            if (Objects.nonNull(callReminderDialog)) {
+                callReminderDialog.dismiss();
+                callReminderDialog = null;
             }
             EventBus.getDefault().post(new CloseVideoActivityEvent(event.callId, event.callSession));
         }
@@ -458,14 +459,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private void showLinkWayDialog() {
         Toast.makeText(MainActivity.this, "-->调用原生弹窗", Toast.LENGTH_SHORT).show();
         LinkWayDialog dialog = new LinkWayDialog();
-        dialog.setLinkListener(new LinkWayDialog.OnLinkWaySelectedListener() {
-            @Override
-            public void onOptionSelected(int item) {
-                Log.i(TAG, "-->选择" + item);
-                callType = item;
-                dialog.dismiss();
-                startUnitDialog();
-            }
+        dialog.setLinkListener(item -> {
+            Log.i(TAG, "-->选择" + item);
+            callType = item;
+            dialog.dismiss();
+            startUnitDialog();
         });
         dialog.show(getSupportFragmentManager(), "BottomSheetDialog");
     }
@@ -475,13 +473,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      */
     public void startUnitDialog() {
         UnitListDialog dialog = new UnitListDialog();
-        dialog.setOnOptionSelectedListener(new UnitListDialog.OnOptionSelectedListener() {
-            @Override
-            public void onOptionSelected(TrunkingGroupContact item) {
-                Log.i(TAG, "--->选中 item" + item.getGroupName());
-                dialog.dismiss();
-                startMemberListDialog(item);
-            }
+        dialog.setOnOptionSelectedListener(item -> {
+            Log.i(TAG, "--->选中 item" + item.getGroupName());
+            dialog.dismiss();
+            startMemberListDialog(item);
         });
         dialog.show(getSupportFragmentManager(), "fragment");
     }
@@ -501,7 +496,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         dialog.show(getSupportFragmentManager(), "fragment");
     }
 
-    private AlertDialog mDialog = null;
+    private CallReminderDialog callReminderDialog = null;
 
     /**
      * 来电弹窗
@@ -513,33 +508,36 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         } else {
             title = "语音来电";
         }
-        if (Objects.nonNull(mDialog)) {
+        if (Objects.nonNull(callReminderDialog)) {
             return;
         }
+        callReminderDialog = new CallReminderDialog(callSession);
+        callReminderDialog.show(getSupportFragmentManager(), "CallReminderDialog");
+
         // 创建对话框构建器
-        mDialog = new AlertDialog
-                .Builder(this)
-                .setTitle("来电提示")
-                .setMessage(title)
-                .setPositiveButton("去接听", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        Intent intent = new Intent(MainActivity.this, MessageUiActivity.class);
-                        intent.putExtra("comeType", 1);
-                        intent.putExtra("callSession", callSession);
-                        // 点击确定后的逻辑
-                        startActivity(intent);
-                        // 关闭对话框
-                        dialog.dismiss();
-                    }
-                })
-                .setNegativeButton("挂断", (dialog, which) -> {
-                    // 点击取消后的逻辑
-                    PnasCallUtil.getInstance().hangupActiveCall();
-                    dialog.dismiss();
-                }).create();
-        mDialog.setCanceledOnTouchOutside(false);
-        mDialog.show();
+        // mDialog = new AlertDialog
+        //         .Builder(this)
+        //         .setTitle("来电提示")
+        //         .setMessage(title)
+        //         .setPositiveButton("去接听", new DialogInterface.OnClickListener() {
+        //             @Override
+        //             public void onClick(DialogInterface dialog, int which) {
+        //                 Intent intent = new Intent(MainActivity.this, MessageUiActivity.class);
+        //                 intent.putExtra("comeType", 1);
+        //                 intent.putExtra("callSession", callSession);
+        //                 // 点击确定后的逻辑
+        //                 startActivity(intent);
+        //                 // 关闭对话框
+        //                 dialog.dismiss();
+        //             }
+        //         })
+        //         .setNegativeButton("挂断", (dialog, which) -> {
+        //             // 点击取消后的逻辑
+        //             PnasCallUtil.getInstance().hangupActiveCall();
+        //             dialog.dismiss();
+        //         }).create();
+        // mDialog.setCanceledOnTouchOutside(false);
+        // mDialog.show();
     }
 
 

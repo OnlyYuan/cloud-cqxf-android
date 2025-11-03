@@ -24,6 +24,7 @@ import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
 import com.mpttpnas.pnaslibraryapi.callback.FloorStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GroupAffiliactionNotifyResultCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent;
+import com.mydemo.test31.dialog.CallReminderDialog;
 import com.mydemo.test31.event.CloseVideoActivityEvent;
 import com.mydemo.test31.event.OpenVideoActivityEvent;
 import com.mydemo.test31.util.MicMuteManager;
@@ -275,7 +276,7 @@ public class MessageUiActivity extends AppCompatActivity {
         } else {
             title = "语音来电";
         }
-        if (mDialog != null) {
+        if (Objects.nonNull(mDialog)) {
             return;
         }
         // 创建对话框构建器
@@ -326,10 +327,9 @@ public class MessageUiActivity extends AppCompatActivity {
 
         if (!callSession.isAfterEnded() && (callSession.getCallState() == 4
                 || callSession.getCallState() == 5)) {
-            AlertDialog alertDialog = event.getAlertDialog();
-            if (Objects.nonNull(event.getAlertDialog())) {
-                alertDialog.dismiss();
-                alertDialog = null;
+            CallReminderDialog reminderDialog = event.getCallReminderDialog();
+            if (Objects.nonNull(reminderDialog)) {
+                reminderDialog.dismiss();
             }
             dismissConnectDialog();
             connectShow(true);

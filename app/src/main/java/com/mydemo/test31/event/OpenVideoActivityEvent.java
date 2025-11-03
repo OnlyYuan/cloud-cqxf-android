@@ -1,8 +1,7 @@
 package com.mydemo.test31.event;
 
-import android.app.AlertDialog;
-
 import com.mpttpnas.api.TrunkingCallSession;
+import com.mydemo.test31.dialog.CallReminderDialog;
 
 public class OpenVideoActivityEvent {
 
@@ -11,7 +10,7 @@ public class OpenVideoActivityEvent {
     public int callId;
     public TrunkingCallSession callSession;
 
-    private AlertDialog alertDialog = null;
+    private CallReminderDialog callReminderDialog = null;
 
     public OpenVideoActivityEvent(int callId, TrunkingCallSession callSession) {
         this.callId = callId;
@@ -26,11 +25,11 @@ public class OpenVideoActivityEvent {
         return this.callSession;
     }
 
-    public AlertDialog getAlertDialog() {
-        return alertDialog;
+    public CallReminderDialog getCallReminderDialog() {
+        return callReminderDialog;
     }
 
-    public void setAlertDialog(AlertDialog alertDialog) {
-        this.alertDialog = alertDialog;
+    public void setCallReminderDialog(CallReminderDialog callReminderDialog) {
+        this.callReminderDialog = callReminderDialog;
     }
 }

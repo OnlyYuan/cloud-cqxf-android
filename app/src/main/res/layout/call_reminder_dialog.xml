@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_margin="16dp"
+    android:background="@drawable/dialog_rounded_background"
+    android:orientation="vertical">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/movie_btn"
+        android:layout_width="match_parent"
+        android:layout_height="267dp"
+        android:layout_margin="10dp"
+        android:background="@drawable/item_radius_background">
+
+        <!-- 居中的 ImageView -->
+        <ImageView
+            android:id="@+id/video_icon"
+            android:layout_width="60dp"
+            android:layout_height="60dp"
+            android:layout_marginTop="20dp"
+            android:src="@mipmap/voice_btn"
+            app:layout_constraintBottom_toTopOf="@+id/title_text"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toTopOf="parent" />
+
+        <TextView
+            android:id="@+id/title_text"
+            android:layout_width="282dp"
+            android:layout_height="82dp"
+            android:layout_marginTop="20dp"
+            android:textAlignment="center"
+            android:text="内容"
+            android:textColor="@color/black"
+            android:textSize="18sp"
+            android:textStyle="bold"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintHorizontal_bias="0.428"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintTop_toBottomOf="@+id/video_icon" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/hang_up_btn"
+            android:layout_width="120dp"
+            android:layout_height="48dp"
+            android:layout_marginBottom="16dp"
+            android:text="挂断"
+            android:textColor="@color/black"
+            app:backgroundTint="@color/grey"
+            app:cornerRadius="14dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toStartOf="@+id/answer_btn"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/answer_btn"
+            android:layout_width="120dp"
+            android:layout_height="48dp"
+            android:layout_marginBottom="16dp"
+            android:text="接听"
+            android:textColor="#7E9FCF"
+            app:backgroundTint="#D7E0F8"
+            app:cornerRadius="14dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent"
+            app:layout_constraintStart_toEndOf="@+id/hang_up_btn" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+</LinearLayout>

@@ -5,12 +5,13 @@ import static com.mydemo.test31.util.Util.pocUrl;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.util.Log;
@@ -21,10 +22,10 @@ import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.webkit.JavascriptInterface;
+import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -51,18 +52,25 @@ import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent
 import com.mydemo.test31.dialog.CallReminderDialog;
 import com.mydemo.test31.dialog.LinkWayDialog;
 import com.mydemo.test31.dialog.MemberListDialog;
+import com.mydemo.test31.dialog.SelectPicDialog;
 import com.mydemo.test31.dialog.UnitListDialog;
 import com.mydemo.test31.event.CloseVideoActivityEvent;
 import com.mydemo.test31.event.OpenVideoActivityEvent;
 import com.mydemo.test31.service.KeepAliveService;
 import com.mydemo.test31.util.AndroidVersionUtils;
+import com.mydemo.test31.util.MyProvider;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
 
+import java.io.File;
+import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.Arrays;
+import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 
 public class MainActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
@@ -83,6 +91,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     public final static String PERMISSION_WRITE_SETTINGS = "android.permission.WRITE_SETTINGS";
     public final static String PERMISSION_POST_NOTIFICATIONS = "android.permission.POST_NOTIFICATIONS";
     public final static String PERMISSION_AUDIO_SETTINGS = "android.permission.MODIFY_AUDIO_SETTINGS";
+    public final static String PERMISSION_READ_MEDIA_IMAGES = "android.permission.READ_MEDIA_IMAGES";
+    public final static String PERMISSION_MOUNT_UNMOUNT_FILESYSTEMS = "android.permission.MOUNT_UNMOUNT_FILESYSTEMS";
 
     public final static String[] permissionNeedToCheck = {
             PERMISSION_READ_PHONE_STATE,           // 读取手机状态
@@ -90,6 +100,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             PERMISSION_ACCESS_COARSE_LOCATION,     // 粗略位置
             PERMISSION_CAMERA,                     // 相机
             PERMISSION_RECORD_AUDIO,               // 录音
+            PERMISSION_READ_MEDIA_IMAGES,
             PERMISSION_READ_EXTERNAL_STORAGE,      // 读取外部存储
             PERMISSION_WRITE_EXTERNAL_STORAGE,     // 写入外部存储
             PERMISSION_POST_NOTIFICATIONS,         // 发送通知 (Android 13+)
@@ -127,6 +138,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     // h5传入的密码
     private String passWord = "";
+
+    private ValueCallback<Uri[]> filePathCallback; // 用于向H5返回选择结果
+    private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
+    private static final int REQUEST_TAKE_PHOTO = 1002;
+    private String cameraImagePath; // 保存相机拍照的临时图片路径
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -175,14 +191,107 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         webSettings.setSavePassword(true);
         webSettings.setAllowUniversalAccessFromFileURLs(true);
 
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
+
+        // 3. 允许自动播放媒体（可选，避免H5调用摄像头后需要手动触发）
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+
         // 允许混合内容（http 和 https 混合加载）
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
-        registerJsInterface();
         // 设置 WebChromeClient 以支持 JS 弹窗
-        webView.setWebChromeClient(new WebChromeClient());
-        webView.setWebViewClient(new WebViewClient());
+        webView.setWebChromeClient(new WebChromeClient(){
+            @Override
+            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+                // 保存回调，后续返回结果给 H5
+                MainActivity.this.filePathCallback = filePathCallback;
+                showSelectPicDialog();
+                return true;
+            }
+        });
+        registerJsInterface();
+    }
+
+
+    private String currentPhotoPath; // 保存相机拍照的临时文件路径
+
+    // 生成保存照片的临时文件
+    private File createImageFile() throws IOException {
+        // 用时间戳作为文件名，确保唯一
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+        String imageFileName = "JPEG_" + timeStamp + "_";
+        // 保存到应用私有目录下的Pictures文件夹（无需存储权限）
+        File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+        // 创建临时文件
+        File imageFile = File.createTempFile(imageFileName, ".jpg", storageDir);
+        // 记录文件路径
+        currentPhotoPath = imageFile.getAbsolutePath();
+        return imageFile;
+    }
+
+
+    /**
+     * 选择相机相册弹窗
+     */
+    private void showSelectPicDialog(){
+        SelectPicDialog selectPicDialog = new SelectPicDialog();
+        selectPicDialog.setLinkListener(new SelectPicDialog.OnSelectPicDialogListener() {
+            @Override
+            public void onOptionSelected(int type) {
+                if (type ==0){//相机
+                    goCameraFun();
+                }else {//相册
+                    goAlbum();
+                }
+            }
+        });
+        selectPicDialog.show(getSupportFragmentManager(),"albumDialog");
+    }
+
+    /**
+     * 打开相机
+     */
+    private void goCameraFun(){
+        // 创建启动相机的Intent
+        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+        // 检查是否有相机应用可处理
+        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
+            // 创建保存照片的文件
+            File photoFile = null;
+            try {
+                photoFile = createImageFile(); // 生成临时文件
+            } catch (IOException e) {
+                e.printStackTrace();
+                return;
+            }
+
+            if (photoFile != null) {
+                // 通过FileProvider生成content://格式的Uri（避免FileUriExposedException）
+                Uri photoUri = MyProvider.getUriForFile(
+                        MainActivity.this,
+                        "com.mydemo.test31.fileprovider", // 与Manifest中一致
+                        photoFile
+                );
+
+                // 告诉相机将照片保存到该Uri
+                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+                // 启动相机，等待结果返回
+                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+            }
+        }
+    }
+
+    /**
+     * 打开相册
+     */
+    private void goAlbum(){
+        Intent pickIntent = new Intent(Intent.ACTION_PICK,
+                MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        pickIntent.setType("image/* video/*"); // 只选择图片
+        startActivityForResult(pickIntent, FILE_CHOOSER_REQUEST_CODE);
     }
 
 
@@ -311,6 +420,35 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 // 所有权限都已授予，启动并绑定服务
                 startAndBindService();
             }
+        }
+        Log.i(TAG,"===>相机拍照的图片$cameraImagePath2222");
+
+        //相册
+        if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
+            Uri[] results = null;
+
+            // 处理返回结果（用户选择了图片或拍照成功）
+            if (resultCode == Activity.RESULT_OK) {
+                if (data != null) {
+                    // 相册选择的图片（有数据返回）
+                    Uri uri = data.getData();
+                    if (uri != null) {
+                        results = new Uri[]{uri};
+                    }
+                }
+            }
+
+            // 将结果返回给H5
+            if (filePathCallback != null) {
+                filePathCallback.onReceiveValue(results);
+                filePathCallback = null; // 重置回调，避免内存泄漏
+            }
+        }
+
+        //相机
+        if (requestCode ==  REQUEST_TAKE_PHOTO &&resultCode == Activity.RESULT_OK ){
+                // 相机拍照的图片（无data返回，用临时路径）
+                Log.i(TAG,"===>相机拍照的图片$cameraImagePath");
         }
     }
 

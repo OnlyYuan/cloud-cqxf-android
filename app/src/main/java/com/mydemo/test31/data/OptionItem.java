@@ -1,8 +1,8 @@
 package com.mydemo.test31.data;
 
 public class OptionItem {
-    private int id;
-    private String name;
+    private final int id;
+    private final String name;
 
     public OptionItem(int id, String name) {
         this.id = id;

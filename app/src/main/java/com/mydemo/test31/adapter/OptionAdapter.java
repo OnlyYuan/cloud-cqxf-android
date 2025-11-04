@@ -16,8 +16,8 @@ import java.util.List;
 
 public class OptionAdapter extends RecyclerView.Adapter<OptionAdapter.ViewHolder> {
 
-    private List<TrunkingGroupContact> mOptionList;
-    private OnItemClickListener mListener;
+    private final List<TrunkingGroupContact> mOptionList;
+    private final OnItemClickListener mListener;
 
     // 点击事件接口
     public interface OnItemClickListener {

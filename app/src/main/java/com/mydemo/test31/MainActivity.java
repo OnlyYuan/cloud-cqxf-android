@@ -324,7 +324,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
          */
         @JavascriptInterface
         public void loginPoc(String user, String password) {
-            Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
+            // Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
             useName = user;
             passWord = password;
             isH5Login = true;
@@ -523,7 +523,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             if (!useName.contains("@")) {
                 useName = useName + "@poc.com";
             }
-            Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
+            // Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
         }
     }

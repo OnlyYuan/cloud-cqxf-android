@@ -16,8 +16,8 @@ import java.util.List;
 
 public class MemberAdapter extends RecyclerView.Adapter<MemberAdapter.ViewHolder> {
 
-    private List<TrunkingLocalContact> mOptionList;
-    private OnItemClickListener mListener;
+    private final List<TrunkingLocalContact> mOptionList;
+    private final OnItemClickListener mListener;
 
     // 点击事件接口
     public interface OnItemClickListener {

@@ -1,7 +1,6 @@
 package com.mydemo.test31;
 
 import android.app.AlertDialog;
-import android.content.DialogInterface;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.Gravity;
@@ -75,7 +74,7 @@ public class MessageUiActivity extends AppCompatActivity {
     MuteManager voiceMuteManager = null;
 
     // 用于保存原始音量，以便恢复
-    private int originalVolume = 0 ;
+    private int originalVolume = 0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -130,7 +129,7 @@ public class MessageUiActivity extends AppCompatActivity {
         setVoiceImage();
     }
 
-    private void initVoiceMute(){
+    private void initVoiceMute() {
         voiceMuteManager = new MuteManager(this);
         originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
     }
@@ -203,12 +202,12 @@ public class MessageUiActivity extends AppCompatActivity {
     /**
      * 设置外放开闭音
      */
-    private void setVoiceFun(){
+    private void setVoiceFun() {
 
-        if (isVoiceOn){
+        if (isVoiceOn) {
             originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
             voiceMuteManager.setMusicVolumeToZero(0);
-        }else {
+        } else {
             voiceMuteManager.setMusicVolumeToZero(originalVolume);
         }
         isVoiceOn = !isVoiceOn;
@@ -218,12 +217,12 @@ public class MessageUiActivity extends AppCompatActivity {
     /**
      * 设置麦克风图片
      */
-    private void setMicImage(){
+    private void setMicImage() {
         int imgId = R.mipmap.ic_launcher;
-        if(isMicMuted){
-            imgId =  R.mipmap.mic_off;
-        }else {
-            imgId =  R.mipmap.mic_on;
+        if (isMicMuted) {
+            imgId = R.mipmap.mic_off;
+        } else {
+            imgId = R.mipmap.mic_on;
         }
         micBtn.setImageResource(imgId);
     }
@@ -231,11 +230,11 @@ public class MessageUiActivity extends AppCompatActivity {
     /**
      * 设置是否禁播放音
      */
-    private void setVoiceImage(){
+    private void setVoiceImage() {
         int imgId = R.mipmap.ic_launcher;
-        if (isVoiceOn){
+        if (isVoiceOn) {
             imgId = R.mipmap.music_on;
-        }else {
+        } else {
             imgId = R.mipmap.music_off;
         }
         voiceBtn.setImageResource(imgId);
@@ -344,47 +343,8 @@ public class MessageUiActivity extends AppCompatActivity {
         }
     }
 
-    /**
-     * 来电弹窗
-     */
-    private void acceptDialog() {
-        String title = "";
-        if (callSession.isVideoCall()) {
-            title = "视频来电";
-        } else {
-            title = "语音来电";
-        }
-        if (Objects.nonNull(mDialog)) {
-            return;
-        }
-        // 创建对话框构建器
-        mDialog = new AlertDialog
-                .Builder(this)
-                .setTitle("来电提示")
-                .setMessage(title)
-                .setPositiveButton("接听", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        // 点击确定后的逻辑
-                        acceptCall();
-                        dialog.dismiss(); // 关闭对话框
-                        dismissConnectDialog();
-                    }
-                })
-                .setNegativeButton("挂断", new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        // 点击取消后的逻辑
-                        PnasCallUtil.getInstance().hangupActiveCall();
-                        dialog.dismiss();
-                    }
-                }).create();
-        mDialog.setCanceledOnTouchOutside(false);
-        mDialog.show();
-    }
-
     @Override
-    protected void onStop(){
+    protected void onStop() {
         super.onStop();
         voiceMuteManager.setMusicVolumeToZero(originalVolume);
     }

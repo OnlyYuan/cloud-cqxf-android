@@ -59,6 +59,7 @@ dependencies {
     implementation files('libs/yl_help.aar')
     implementation files('libs/xmpp.jar')
     implementation 'com.google.android.gms:play-services-maps:17.0.1'
+    implementation 'cn.hutool:hutool-all:5.8.24'
 
     implementation 'pub.devrel:easypermissions:3.0.0'
     implementation 'com.github.bumptech.glide:glide:4.12.0'

@@ -251,6 +251,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         selectPicDialog.show(getSupportFragmentManager(),"albumDialog");
     }
 
+    private Uri photoUri=null;
     /**
      * 打开相机
      */
@@ -271,7 +272,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
             if (photoFile != null) {
                 // 通过FileProvider生成content://格式的Uri（避免FileUriExposedException）
-                Uri photoUri = MyProvider.getUriForFile(
+                photoUri = MyProvider.getUriForFile(
                         MainActivity.this,
                         "com.mydemo.test31.fileprovider", // 与Manifest中一致
                         photoFile
@@ -449,6 +450,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 if (data != null) {
                     // 相册选择的图片（有数据返回）
                     Uri uri = data.getData();
+                    ToastUtils.showMessage(MainActivity.this,"相册数据"+data.getData());
                     if (uri != null) {
                         results = new Uri[]{uri};
                     }
@@ -463,14 +465,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
 
         //相机
-        if (requestCode ==  REQUEST_TAKE_PHOTO &&resultCode == Activity.RESULT_OK ){
+        if (requestCode ==  REQUEST_TAKE_PHOTO ){
+
+
                 // 相机拍照的图片（无data返回，用临时路径）
-            ToastUtils.showMessage(this,"1111相机拍照的图片"+cameraImagePath);
+
             Uri[] results = null;
-            if (cameraImagePath!=null){
-                results = new Uri[]{Uri.parse(cameraImagePath)}; // cameraImagePath 为拍照临时路径
+            if (resultCode == Activity.RESULT_OK){
+                if (cameraImagePath!=null){
+                    results = new Uri[]{photoUri}; // cameraImagePath 为拍照临时路径
+                }
             }
 
+            ToastUtils.showMessage(MainActivity.this,"1111相机拍照的图片"+photoUri);
             // 将结果返回给H5
             if (filePathCallback != null) {
                 filePathCallback.onReceiveValue(results);

@@ -25,11 +25,11 @@ public class MuteManager {
     /**
      * 将应用音乐流音量设置为0（替代静音的另一种方式）
      */
-    public void setMusicVolumeToZero() {
+    public void setMusicVolumeToZero(int num) {
         if (audioManager != null) {
             audioManager.setStreamVolume(
                     AudioManager.STREAM_MUSIC,
-                    0,  // 音量值，0为最小
+                    num,  // 音量值，0为最小
                     AudioManager.FLAG_REMOVE_SOUND_AND_VIBRATE  // 操作标志
             );
         }
@@ -48,7 +48,14 @@ public class MuteManager {
             );
         }
     }
-
+    public void raiseVolume() {
+        // 增加媒体音量（步长由系统决定）
+        audioManager.adjustStreamVolume(
+                AudioManager.STREAM_MUSIC,
+                AudioManager.ADJUST_RAISE,  // 增加音量
+                AudioManager.FLAG_SHOW_UI
+        );
+    }
     /**
      * 获取当前音乐流的音量
      */

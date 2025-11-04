@@ -56,6 +56,38 @@
             android:layout_height="match_parent"
             android:background="@color/cardview_dark_background"/>
 
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:id="@+id/unLinkBg"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/imageView"
+                android:layout_width="120dp"
+                android:layout_height="120dp"
+                android:src="@mipmap/background_icon"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toTopOf="parent" />
+
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="请建立呼叫..."
+                android:textColor="#F5F6F7"
+                android:textSize="14sp"
+                android:layout_marginTop="9dp"
+                app:layout_constraintEnd_toEndOf="parent"
+                app:layout_constraintStart_toStartOf="parent"
+                app:layout_constraintTop_toBottomOf="@+id/imageView" />
+
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+
+
+
     </FrameLayout>
 
     <!-- 底部操作区域 - 固定高度 -->
@@ -97,14 +129,14 @@
                 android:padding="8dp"
                 android:src="@mipmap/music_on"
                 app:layout_constraintBottom_toBottomOf="parent"
-                app:layout_constraintEnd_toStartOf="@+id/setting_btn"
+                app:layout_constraintEnd_toStartOf="@+id/volume_btn"
                 app:layout_constraintHorizontal_bias="0.5"
                 app:layout_constraintStart_toEndOf="@+id/mic_btn"
                 app:layout_constraintTop_toTopOf="parent"
                 app:layout_constraintVertical_bias="0.5" />
 
             <ImageView
-                android:id="@+id/setting_btn"
+                android:id="@+id/volume_btn"
                 android:layout_width="50dp"
                 android:layout_height="50dp"
                 android:padding="8dp"

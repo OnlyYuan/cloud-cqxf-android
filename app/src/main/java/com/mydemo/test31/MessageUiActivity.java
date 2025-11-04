@@ -14,6 +14,7 @@ import android.widget.ImageView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.constraintlayout.widget.ConstraintLayout;
 
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingConversation;
@@ -50,10 +51,12 @@ public class MessageUiActivity extends AppCompatActivity {
     //音量
     private ImageView voiceBtn = null;
     private ImageView closeBtn = null;
+    private ImageView volumeBtn = null;
 
     // 视频通话区域
     private FrameLayout loVideo = null;
     private SurfaceView renderView;
+    private ConstraintLayout unLinkBg;
     private AlertDialog mDialog = null;
     //等待对方接听的等待弹窗
     private AlertDialog connecttingDialog = null;
@@ -111,7 +114,10 @@ public class MessageUiActivity extends AppCompatActivity {
         micBtn = findViewById(R.id.mic_btn);
         voiceBtn = findViewById(R.id.voice_Btn);
         closeBtn = findViewById(R.id.close_btn);
+        unLinkBg = findViewById(R.id.unLinkBg);
+        volumeBtn = findViewById(R.id.volume_btn);
         renderView = new SurfaceView(this);
+        initVoiceMute();
         FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.MATCH_PARENT);
         lp.gravity = Gravity.CENTER;
@@ -127,7 +133,6 @@ public class MessageUiActivity extends AppCompatActivity {
     private void initVoiceMute(){
         voiceMuteManager = new MuteManager(this);
         originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
-
     }
 
     /**
@@ -135,9 +140,11 @@ public class MessageUiActivity extends AppCompatActivity {
      */
     private void connectShow(Boolean isConnect) {
         if (isConnect) {
+            unLinkBg.setVisibility(View.GONE);
             connectBtn.setVisibility(View.GONE);
             cancelBtn.setVisibility(View.VISIBLE);
         } else {
+            unLinkBg.setVisibility(View.VISIBLE);
             connectBtn.setVisibility(View.VISIBLE);
             cancelBtn.setVisibility(View.GONE);
         }
@@ -162,7 +169,14 @@ public class MessageUiActivity extends AppCompatActivity {
         });
 
         //麦克风
-        micBtn.setOnClickListener(v -> setMicFun());
+        micBtn.setOnClickListener(v ->
+                setMicFun()
+        );
+
+        //调节音量
+        volumeBtn.setOnClickListener(v ->
+                voiceMuteManager.raiseVolume()
+        );
 
         closeBtn.setOnClickListener(v -> {
             PnasCallUtil.getInstance().hangupActiveCall();
@@ -192,9 +206,10 @@ public class MessageUiActivity extends AppCompatActivity {
     private void setVoiceFun(){
 
         if (isVoiceOn){
-            voiceMuteManager.muteMusicStream(false);
+            originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
+            voiceMuteManager.setMusicVolumeToZero(0);
         }else {
-            voiceMuteManager.muteMusicStream(true);
+            voiceMuteManager.setMusicVolumeToZero(originalVolume);
         }
         isVoiceOn = !isVoiceOn;
         setVoiceImage();
@@ -371,7 +386,7 @@ public class MessageUiActivity extends AppCompatActivity {
     @Override
     protected void onStop(){
         super.onStop();
-
+        voiceMuteManager.setMusicVolumeToZero(originalVolume);
     }
 
     @Override

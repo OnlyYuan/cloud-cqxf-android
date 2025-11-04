@@ -63,6 +63,7 @@ import com.mydemo.test31.util.MyProvider;
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
+import org.jivesoftware.smack.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
@@ -145,6 +146,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private String cameraImagePath; // 保存相机拍照的临时图片路径
 
     @Override
+    @RequiresApi(api = Build.VERSION_CODES.O)
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate() called with: savedInstanceState = [" + savedInstanceState + "]");
         super.onCreate(savedInstanceState);
@@ -329,6 +331,22 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             startLogin();
         }
 
+        /**
+         * 重新登录poc
+         */
+        @JavascriptInterface
+        public void relogin() {
+            Toast.makeText(MainActivity.this, "重新登录：用户名："
+                    + useName + "密码： " + passWord, Toast.LENGTH_SHORT).show();
+            if (!StringUtils.isNullOrEmpty(useName)) {
+                isH5Login = true;
+                PnasUserUtil instance = PnasUserUtil.getInstance();
+                if (!instance.isLogin()) {
+                    instance.relogin();
+                }
+            }
+        }
+
 
         /**
          * 进入到视频界面
@@ -486,6 +504,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      */
     private void startLogin() {
         if (isInitPnasUserUtilSuccess && isH5Login) {
+            if (!useName.contains("@")) {
+                useName = useName + "@poc.com";
+            }
             Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
         }
@@ -640,42 +661,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      * 来电弹窗
      */
     private void acceptDialog(CallStateChangedCallbackEvent event) {
-        String title = "";
-        if (callSession.isVideoCall()) {
-            title = "视频来电";
-        } else {
-            title = "语音来电";
-        }
         if (Objects.nonNull(callReminderDialog)) {
             return;
         }
         callReminderDialog = new CallReminderDialog(callSession);
         callReminderDialog.show(getSupportFragmentManager(), "CallReminderDialog");
-
-        // 创建对话框构建器
-        // mDialog = new AlertDialog
-        //         .Builder(this)
-        //         .setTitle("来电提示")
-        //         .setMessage(title)
-        //         .setPositiveButton("去接听", new DialogInterface.OnClickListener() {
-        //             @Override
-        //             public void onClick(DialogInterface dialog, int which) {
-        //                 Intent intent = new Intent(MainActivity.this, MessageUiActivity.class);
-        //                 intent.putExtra("comeType", 1);
-        //                 intent.putExtra("callSession", callSession);
-        //                 // 点击确定后的逻辑
-        //                 startActivity(intent);
-        //                 // 关闭对话框
-        //                 dialog.dismiss();
-        //             }
-        //         })
-        //         .setNegativeButton("挂断", (dialog, which) -> {
-        //             // 点击取消后的逻辑
-        //             PnasCallUtil.getInstance().hangupActiveCall();
-        //             dialog.dismiss();
-        //         }).create();
-        // mDialog.setCanceledOnTouchOutside(false);
-        // mDialog.show();
     }
 
 

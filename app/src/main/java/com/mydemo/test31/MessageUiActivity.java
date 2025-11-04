@@ -28,6 +28,7 @@ import com.mydemo.test31.dialog.CallReminderDialog;
 import com.mydemo.test31.event.CloseVideoActivityEvent;
 import com.mydemo.test31.event.OpenVideoActivityEvent;
 import com.mydemo.test31.util.MicMuteManager;
+import com.mydemo.test31.util.MuteManager;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -63,9 +64,15 @@ public class MessageUiActivity extends AppCompatActivity {
     private boolean isVoiceOn = true;
 
     // mic的状态  true是禁音，false未禁音
-    private boolean isMicMuted = true;
-    // 在 Activity 中使用
+    private boolean isMicMuted = false;
+
+    //mic禁音
     MicMuteManager micManager = null;
+    //声音禁音
+    MuteManager voiceMuteManager = null;
+
+    // 用于保存原始音量，以便恢复
+    private int originalVolume = 0 ;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -113,6 +120,14 @@ public class MessageUiActivity extends AppCompatActivity {
         loVideo.addView(renderView, 0);
         renderView.setVisibility(View.VISIBLE);
         connectShow(false);
+        setMicImage();
+        setVoiceImage();
+    }
+
+    private void initVoiceMute(){
+        voiceMuteManager = new MuteManager(this);
+        originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
+
     }
 
     /**
@@ -141,10 +156,12 @@ public class MessageUiActivity extends AppCompatActivity {
             connectShow(false);
         });
 
+        //禁音
         voiceBtn.setOnClickListener(v -> {
-
+            setVoiceFun();
         });
 
+        //麦克风
         micBtn.setOnClickListener(v -> setMicFun());
 
         closeBtn.setOnClickListener(v -> {
@@ -154,15 +171,61 @@ public class MessageUiActivity extends AppCompatActivity {
 
     }
 
+    /**
+     * 设置麦克风开闭
+     */
     private void setMicFun() {
-        if (isMicMuted) {
+        if (!isMicMuted) {
             // 麦克风禁音
             micManager.muteMic();
         } else {
             // 麦克风打开
             micManager.unmuteMic();
         }
+        isMicMuted = !isMicMuted;
+        setMicImage();
     }
+
+    /**
+     * 设置外放开闭音
+     */
+    private void setVoiceFun(){
+
+        if (isVoiceOn){
+            voiceMuteManager.muteMusicStream(false);
+        }else {
+            voiceMuteManager.muteMusicStream(true);
+        }
+        isVoiceOn = !isVoiceOn;
+        setVoiceImage();
+    }
+
+    /**
+     * 设置麦克风图片
+     */
+    private void setMicImage(){
+        int imgId = R.mipmap.ic_launcher;
+        if(isMicMuted){
+            imgId =  R.mipmap.mic_off;
+        }else {
+            imgId =  R.mipmap.mic_on;
+        }
+        micBtn.setImageResource(imgId);
+    }
+
+    /**
+     * 设置是否禁播放音
+     */
+    private void setVoiceImage(){
+        int imgId = R.mipmap.ic_launcher;
+        if (isVoiceOn){
+            imgId = R.mipmap.music_on;
+        }else {
+            imgId = R.mipmap.music_off;
+        }
+        voiceBtn.setImageResource(imgId);
+    }
+
 
     private void setVoiceNumFun() {
 
@@ -305,6 +368,11 @@ public class MessageUiActivity extends AppCompatActivity {
         mDialog.show();
     }
 
+    @Override
+    protected void onStop(){
+        super.onStop();
+
+    }
 
     @Override
     protected void onDestroy() {

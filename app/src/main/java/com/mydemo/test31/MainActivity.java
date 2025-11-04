@@ -33,6 +33,7 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.mptt.media.modules.uvc.utils.ToastUtils;
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingConversation;
 import com.mpttpnas.api.TrunkingGroupContact;
@@ -215,8 +216,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     }
 
 
-    private String currentPhotoPath; // 保存相机拍照的临时文件路径
-
     // 生成保存照片的临时文件
     private File createImageFile() throws IOException {
         // 用时间戳作为文件名，确保唯一
@@ -227,7 +226,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // 创建临时文件
         File imageFile = File.createTempFile(imageFileName, ".jpg", storageDir);
         // 记录文件路径
-        currentPhotoPath = imageFile.getAbsolutePath();
+        cameraImagePath = imageFile.getAbsolutePath();
         return imageFile;
     }
 
@@ -448,7 +447,17 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         //相机
         if (requestCode ==  REQUEST_TAKE_PHOTO &&resultCode == Activity.RESULT_OK ){
                 // 相机拍照的图片（无data返回，用临时路径）
-                Log.i(TAG,"===>相机拍照的图片$cameraImagePath");
+            ToastUtils.showMessage(this,"1111相机拍照的图片"+cameraImagePath);
+            Uri[] results = null;
+            if (cameraImagePath!=null){
+                results = new Uri[]{Uri.parse(cameraImagePath)}; // cameraImagePath 为拍照临时路径
+            }
+
+            // 将结果返回给H5
+            if (filePathCallback != null) {
+                filePathCallback.onReceiveValue(results);
+                filePathCallback = null; // 重置回调，避免内存泄漏
+            }
         }
     }
 

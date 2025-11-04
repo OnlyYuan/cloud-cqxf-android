@@ -37,7 +37,9 @@
 
         <activity
             android:name=".MessageUiActivity"
-            android:exported="true" />
+            android:exported="true" >
+
+        </activity>
         <activity
             android:name=".MainActivity"
             android:launchMode="standard"

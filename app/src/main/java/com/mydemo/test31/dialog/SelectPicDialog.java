@@ -49,7 +49,10 @@ public class SelectPicDialog extends DialogFragment {
             dismiss();
         });
 
-        cancel.setOnClickListener(v -> dismiss());
+        cancel.setOnClickListener(v -> {
+            mListener.onOptionSelected(2);
+            dismiss();
+        });
 
         return view;
     }
@@ -59,6 +62,8 @@ public class SelectPicDialog extends DialogFragment {
         super.onStart();
         // 设置弹窗属性
         Dialog dialog = getDialog();
+        dialog.setCancelable(false);
+        dialog.setCanceledOnTouchOutside(false);
         if (dialog != null) {
             Window window = dialog.getWindow();
             if (window != null) {

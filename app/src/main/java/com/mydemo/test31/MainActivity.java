@@ -243,8 +243,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             public void onOptionSelected(int type) {
                 if (type ==0){//相机
                     goCameraFun();
-                }else {//相册
+                }else if (type ==1){//相册
                     goAlbum();
+                }else {
+                    Uri[] results = null;
+                    // 将结果返回给H5
+                    if (filePathCallback != null) {
+                        filePathCallback.onReceiveValue(results);
+                        filePathCallback = null; // 重置回调，避免内存泄漏
+                    }
                 }
             }
         });

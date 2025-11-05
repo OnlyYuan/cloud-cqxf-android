@@ -699,4 +699,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         startActivity(intent);
     }
 
+
+    @Override
+    public void onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack();
+        } else {
+            super.onBackPressed();
+        }
+    }
 }

@@ -1,38 +1,40 @@
 package com.mydemo.test31;
 
+import static com.mydemo.test31.util.Util.debugH5Url;
 import static com.mydemo.test31.util.Util.h5Url;
 import static com.mydemo.test31.util.Util.pocUrl;
 
 import android.app.Activity;
-import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.graphics.Color;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.MenuItem;
 import android.view.MotionEvent;
-import android.view.SurfaceView;
 import android.view.View;
-import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
+import android.webkit.WebResourceError;
+import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
-import android.widget.FrameLayout;
-import android.widget.TextView;
+import android.webkit.WebViewClient;
 import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.mptt.media.BuildConfig;
 import com.mptt.media.modules.uvc.utils.ToastUtils;
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingConversation;
@@ -40,7 +42,6 @@ import com.mpttpnas.api.TrunkingGroupContact;
 import com.mpttpnas.api.TrunkingLocalContact;
 import com.mpttpnas.api.TrunkingMessage;
 import com.mpttpnas.pnas.agent.PnasErrorCode;
-import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 import com.mpttpnas.pnaslibraryapi.PnasConfigUtil;
 import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
 import com.mpttpnas.pnaslibraryapi.PnasSDK;
@@ -57,6 +58,7 @@ import com.mydemo.test31.dialog.SelectPicDialog;
 import com.mydemo.test31.dialog.UnitListDialog;
 import com.mydemo.test31.event.CloseVideoActivityEvent;
 import com.mydemo.test31.event.OpenVideoActivityEvent;
+import com.mydemo.test31.event.QRScannerEvent;
 import com.mydemo.test31.service.KeepAliveService;
 import com.mydemo.test31.util.AndroidVersionUtils;
 import com.mydemo.test31.util.MyProvider;
@@ -122,11 +124,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         return true;
     }
 
-    TextView goDialogBtn;
-
     WebView webView;
 
-    private SurfaceView renderView;
 
     private int callType = 0;//建立连接方式 0.语音  1.视频
 
@@ -146,24 +145,54 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private static final int REQUEST_TAKE_PHOTO = 1002;
     private String cameraImagePath; // 保存相机拍照的临时图片路径
 
+    private int statusBarHeight;
+
+
+    /**
+     * 扫码结果
+     */
+    private String cameraResult;
+
     @Override
     @RequiresApi(api = Build.VERSION_CODES.O)
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate() called with: savedInstanceState = [" + savedInstanceState + "]");
         super.onCreate(savedInstanceState);
+        // 1. 设置沉浸式状态栏
+        setupImmersiveStatusBar();
+        // 初始化页面
         setContentView(R.layout.activity_main);
         requestPermissions(permissionNeedToCheck, 1000);
         EventBus.getDefault().register(this);
-
-        renderView = new SurfaceView(this);
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.gravity = Gravity.CENTER;
-        renderView.setLayoutParams(lp);
-        renderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
-        renderView.setVisibility(View.VISIBLE);
+        // 启动保活服务
         startKeepAliveService();
+
+        // 2. 获取状态栏高度
+        statusBarHeight = getStatusBarHeight();
+        // 初始化视图
         initView();
+    }
+
+    /**
+     * 二维码扫码事件
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onQRScannerCallbackEvent(QRScannerEvent event) {
+        this.cameraResult = event.getCameraResult();
+    }
+
+    private void setupImmersiveStatusBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            Window window = getWindow();
+            window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
+            window.setStatusBarColor(Color.TRANSPARENT);
+
+            int systemUiVisibility = window.getDecorView().getSystemUiVisibility();
+            systemUiVisibility |= View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN;
+            systemUiVisibility |= View.SYSTEM_UI_FLAG_LAYOUT_STABLE;
+            window.getDecorView().setSystemUiVisibility(systemUiVisibility);
+        }
     }
 
     /**
@@ -172,7 +201,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private void initView() {
         webView = findViewById(R.id.webView);
         initWebViewSettings();
-        webView.loadUrl(h5Url);
+        webView.loadUrl(debugH5Url);
+//        if (BuildConfig.DEBUG) {
+//            webView.loadUrl(debugH5Url);
+//        } else {
+//            webView.loadUrl(h5Url);
+//        }
+        // 加载本地文件
+        // webView.loadUrl("file:///android_asset/www/index.html");
     }
 
     /**
@@ -189,9 +225,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         webSettings.setBuiltInZoomControls(true);
         //设置cookie缓存
         webSettings.setDomStorageEnabled(true);
-        webSettings.setAppCacheEnabled(true);
+        // webSettings.setAppCacheEnabled(true);
         webSettings.setSaveFormData(true);
         webSettings.setSavePassword(true);
+
+        //新加的
+//        webSettings.setAllowFileAccessFromFileURLs(true);
         webSettings.setAllowUniversalAccessFromFileURLs(true);
 
         webSettings.setAllowFileAccess(true);
@@ -204,8 +243,31 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
         }
+        // 关键：不设置任何padding，完全交给H5控制
+        webView.setPadding(0, 0, 0, 0);
+        webView.setFitsSystemWindows(false);
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                // 预先注入配置
+                injectPreConfig();
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                // 页面完成后再次确认配置
+                injectFinalConfig();
+            }
+
+            @Override
+            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+                // 错误处理时也要保证状态栏正确
+                injectPreConfig();
+            }
+        });
+
         // 设置 WebChromeClient 以支持 JS 弹窗
-        webView.setWebChromeClient(new WebChromeClient(){
+        webView.setWebChromeClient(new WebChromeClient() {
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 // 保存回调，后续返回结果给 H5
@@ -215,6 +277,25 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
         });
         registerJsInterface();
+    }
+
+    private void injectPreConfig() {
+        String jsCode = "window._androidStatusBarHeight = " + statusBarHeight + ";";
+        webView.evaluateJavascript(jsCode, null);
+    }
+
+    private void injectFinalConfig() {
+        String jsCode = String.format(
+                "if (typeof window.setupAndroidUI === 'function') {" +
+                        "  window.setupAndroidUI({" +
+                        "    statusBarHeight: %d," +
+                        "    isDarkMode: %b," +
+                        "    platform: 'android'" +
+                        "  });" +
+                        "}",
+                statusBarHeight, !isLightStatusBar()
+        );
+        webView.evaluateJavascript(jsCode, null);
     }
 
 
@@ -236,12 +317,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     /**
      * 选择相机相册弹窗
      */
-    private void showSelectPicDialog(){
+    private void showSelectPicDialog() {
         SelectPicDialog selectPicDialog = new SelectPicDialog();
         selectPicDialog.setLinkListener(new SelectPicDialog.OnSelectPicDialogListener() {
             @Override
             public void onOptionSelected(int type) {
-                if (type ==0){//相机
+                if (type == 0) {//相机
                     goCameraFun();
                 }else if (type ==1){//相册
                     goAlbum();
@@ -255,14 +336,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 }
             }
         });
-        selectPicDialog.show(getSupportFragmentManager(),"albumDialog");
+        selectPicDialog.show(getSupportFragmentManager(), "albumDialog");
     }
 
-    private Uri photoUri=null;
+    private Uri photoUri = null;
+
     /**
      * 打开相机
      */
-    private void goCameraFun(){
+    private void goCameraFun() {
         // 创建启动相机的Intent
         Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
 
@@ -296,7 +378,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     /**
      * 打开相册
      */
-    private void goAlbum(){
+    private void goAlbum() {
         Intent pickIntent = new Intent(Intent.ACTION_PICK,
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         pickIntent.setType("image/* video/*"); // 只选择图片
@@ -381,8 +463,80 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         });
             });
         }
+
+        @JavascriptInterface
+        public int getStatusBarHeight() {
+            return statusBarHeight;
+        }
+
+        @JavascriptInterface
+        public void setStatusBarStyle(String style) {
+            // H5可以动态改变状态栏样式
+            runOnUiThread(() -> {
+                if ("dark".equals(style)) {
+                    setLightStatusBar(false);
+                } else {
+                    setLightStatusBar(true);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void setStatusBarColor(String color) {
+            runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        getWindow().setStatusBarColor(Color.parseColor(color));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+
+        /**
+         * 打开扫码
+         */
+        @JavascriptInterface
+        public String showQRScanner() {
+            // 启动扫描界面
+            Intent intent = new Intent(MainActivity.this, CameraQRScannerActivity.class);
+            startActivity(intent);
+            return cameraResult;
+        }
     }
 
+
+    private int getStatusBarHeight() {
+        int result = 0;
+        int resourceId = getResources().getIdentifier("status_bar_height", "dimen", "android");
+        if (resourceId > 0) {
+            result = getResources().getDimensionPixelSize(resourceId);
+        }
+        return result;
+    }
+
+    private void setLightStatusBar(boolean light) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            View decorView = getWindow().getDecorView();
+            int flags = decorView.getSystemUiVisibility();
+            if (light) {
+                flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            } else {
+                flags &= ~View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+            }
+            decorView.setSystemUiVisibility(flags);
+        }
+    }
+
+    private boolean isLightStatusBar() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            int flags = getWindow().getDecorView().getSystemUiVisibility();
+            return (flags & View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR) != 0;
+        }
+        return false;
+    }
 
     @Override
     protected void onDestroy() {
@@ -408,24 +562,24 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                     Long.parseLong(AndroidVersionUtils.getVersionRelease()) < 13) {
                 continue;
             }
-            if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
-                allPermissionGrant = false;
-                new AlertDialog.Builder(this)
-                        .setTitle("存在不可用权限")
-                        .setMessage("请在-应用设置-权限-中，允许所有权限")
-                        .setPositiveButton("立即开启", (dialog, which) -> {
-                            Intent intent = new Intent();
-                            intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
-                            Uri uri = Uri.fromParts("package", getPackageName(), null);
-                            intent.setData(uri);
-                            // 发送特定的请求码
-                            startActivityForResult(intent, 203);
-                        })
-                        .setNegativeButton("取消", (dialog, which) -> {
-                            finish();
-                        }).setCancelable(false).show();
-                break;
-            }
+            // if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
+            //     allPermissionGrant = false;
+            //     new AlertDialog.Builder(this)
+            //             .setTitle("存在不可用权限")
+            //             .setMessage("请在-应用设置-权限-中，允许所有权限")
+            //             .setPositiveButton("立即开启", (dialog, which) -> {
+            //                 Intent intent = new Intent();
+            //                 intent.setAction(Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            //                 Uri uri = Uri.fromParts("package", getPackageName(), null);
+            //                 intent.setData(uri);
+            //                 // 发送特定的请求码
+            //                 startActivityForResult(intent, 203);
+            //             })
+            //             .setNegativeButton("取消", (dialog, which) -> {
+            //                 finish();
+            //             }).setCancelable(false).show();
+            //     break;
+            // }
         }
         if (allPermissionGrant) {
             startAndBindService();
@@ -446,7 +600,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 startAndBindService();
             }
         }
-        Log.i(TAG,"===>相机拍照的图片$cameraImagePath2222");
+        Log.i(TAG, "===>相机拍照的图片$cameraImagePath2222");
 
         //相册
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
@@ -457,7 +611,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 if (data != null) {
                     // 相册选择的图片（有数据返回）
                     Uri uri = data.getData();
-                    ToastUtils.showMessage(MainActivity.this,"相册数据"+data.getData());
+                    ToastUtils.showMessage(MainActivity.this, "相册数据" + data.getData());
                     if (uri != null) {
                         results = new Uri[]{uri};
                     }
@@ -472,19 +626,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
 
         //相机
-        if (requestCode ==  REQUEST_TAKE_PHOTO ){
+        if (requestCode == REQUEST_TAKE_PHOTO) {
 
 
-                // 相机拍照的图片（无data返回，用临时路径）
+            // 相机拍照的图片（无data返回，用临时路径）
 
             Uri[] results = null;
-            if (resultCode == Activity.RESULT_OK){
-                if (cameraImagePath!=null){
+            if (resultCode == Activity.RESULT_OK) {
+                if (cameraImagePath != null) {
                     results = new Uri[]{photoUri}; // cameraImagePath 为拍照临时路径
                 }
             }
 
-            ToastUtils.showMessage(MainActivity.this,"1111相机拍照的图片"+photoUri);
+            ToastUtils.showMessage(MainActivity.this, "1111相机拍照的图片" + photoUri);
             // 将结果返回给H5
             if (filePathCallback != null) {
                 filePathCallback.onReceiveValue(results);

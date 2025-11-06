@@ -4,7 +4,8 @@ import android.content.Context;
 import android.media.AudioManager;
 
 public class MuteManager {
-    private AudioManager audioManager;
+
+    private final AudioManager audioManager;
 
     // 初始化AudioManager
     public MuteManager(Context context) {

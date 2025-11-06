@@ -11,6 +11,8 @@
     <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
     <!-- 摄像头权限 -->
     <uses-permission android:name="android.permission.CAMERA" />
+    <!-- 振动权限（可选） -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- 如果需要录制视频/音频，添加以下权限 -->
     <uses-permission android:name="android.permission.RECORD_AUDIO" />
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" /> <!-- 可选，保存图片用 -->
@@ -40,6 +42,12 @@
             android:exported="true" >
 
         </activity>
+
+        <activity
+            android:name=".CameraQRScannerActivity"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
+
         <activity
             android:name=".MainActivity"
             android:launchMode="standard"

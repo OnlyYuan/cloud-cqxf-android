@@ -201,7 +201,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private void initView() {
         webView = findViewById(R.id.webView);
         initWebViewSettings();
-        webView.loadUrl(debugH5Url);
+        webView.loadUrl(h5Url);
 //        if (BuildConfig.DEBUG) {
 //            webView.loadUrl(debugH5Url);
 //        } else {
@@ -230,7 +230,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         webSettings.setSavePassword(true);
 
         //新加的
-//        webSettings.setAllowFileAccessFromFileURLs(true);
+        webSettings.setAllowFileAccessFromFileURLs(true);
         webSettings.setAllowUniversalAccessFromFileURLs(true);
 
         webSettings.setAllowFileAccess(true);

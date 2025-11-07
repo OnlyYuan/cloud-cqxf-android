@@ -11,6 +11,7 @@ import android.os.Handler;
 import android.os.Looper;
 import android.os.Vibrator;
 import android.util.Log;
+import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.widget.Button;
@@ -37,7 +38,8 @@ public class CameraQRScannerActivity extends AppCompatActivity
         implements TextureView.SurfaceTextureListener, Camera.PreviewCallback {
 
     private static final String TAG = "CameraQRScanner";
-    private static final int SCAN_INTERVAL = 500; // 扫描间隔(ms)
+    // 扫描间隔(ms)
+    private static final int SCAN_INTERVAL = 500;
 
     private TextureView textureView;
     private View scanLine;
@@ -172,12 +174,11 @@ public class CameraQRScannerActivity extends AppCompatActivity
                 finish();
                 return;
             }
-
             camera = Camera.open(cameraId);
-
+            // 设置相机方向 - 修复画面歪斜的关键代码
+            setCameraDisplayOrientation(cameraId);
             // 配置相机参数
             Camera.Parameters parameters = camera.getParameters();
-
             // 设置预览尺寸
             Camera.Size optimalSize = getOptimalPreviewSize(parameters.getSupportedPreviewSizes(),
                     textureView.getWidth(), textureView.getHeight());
@@ -216,6 +217,39 @@ public class CameraQRScannerActivity extends AppCompatActivity
             Toast.makeText(this, "启动相机失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
             finish();
         }
+    }
+
+    /**
+     * 设置相机预览方向，确保画面不歪斜
+     */
+    private void setCameraDisplayOrientation(int cameraId) {
+        Camera.CameraInfo info = new Camera.CameraInfo();
+        Camera.getCameraInfo(cameraId, info);
+        int rotation = getWindowManager().getDefaultDisplay().getRotation();
+        int degrees = 0;
+        switch (rotation) {
+            case Surface.ROTATION_0:
+                degrees = 0;
+                break;
+            case Surface.ROTATION_90:
+                degrees = 90;
+                break;
+            case Surface.ROTATION_180:
+                degrees = 180;
+                break;
+            case Surface.ROTATION_270:
+                degrees = 270;
+                break;
+        }
+        int result;
+        if (info.facing == Camera.CameraInfo.CAMERA_FACING_FRONT) {
+            result = (info.orientation + degrees) % 360;
+            result = (360 - result) % 360;  // 前置摄像头需要镜像
+        } else {
+            // 后置摄像头
+            result = (info.orientation - degrees + 360) % 360;
+        }
+        camera.setDisplayOrientation(result);
     }
 
     private int findBackCamera() {

@@ -3,16 +3,18 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context=".MainActivity"
-    android:orientation="vertical">
+    android:orientation="vertical"
+    tools:context=".activity.MainActivity">
+
     <View
         android:layout_width="match_parent"
         android:layout_height="28dp"
-        android:background="@mipmap/bar_bg"
-        />
+        android:background="@mipmap/bar_bg" />
+
     <FrameLayout
         android:layout_width="match_parent"
         android:layout_height="match_parent">
+
         <WebView
             android:id="@+id/webView"
             android:layout_width="match_parent"

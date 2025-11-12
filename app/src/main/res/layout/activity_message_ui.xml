@@ -5,14 +5,14 @@
     android:id="@+id/main"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:orientation="vertical"
     android:background="@color/gray"
-    tools:context=".MessageUiActivity">
+    android:orientation="vertical"
+    tools:context=".activity.MessageUiActivity">
+
     <View
         android:layout_width="match_parent"
         android:layout_height="28dp"
-        android:background="@color/red"
-        />
+        android:background="@color/red" />
     <!-- 顶部标题栏 -->
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
@@ -25,8 +25,8 @@
             android:layout_height="80dp"
             android:gravity="center"
             android:text="实时音视频通话"
-            android:textSize="18sp"
             android:textColor="@color/white"
+            android:textSize="18sp"
             android:textStyle="bold"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
@@ -37,11 +37,11 @@
             android:id="@+id/close_btn"
             android:layout_width="80dp"
             android:layout_height="80dp"
-            android:padding="27dp"
-            android:src="@mipmap/back_icon"
-            android:scaleType="centerCrop"
             android:clickable="true"
             android:focusable="true"
+            android:padding="27dp"
+            android:scaleType="centerCrop"
+            android:src="@mipmap/back_icon"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintStart_toStartOf="@+id/textView"
             app:layout_constraintTop_toTopOf="parent" />
@@ -58,7 +58,7 @@
             android:id="@+id/loVideo"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:background="@color/cardview_dark_background"/>
+            android:background="@color/cardview_dark_background" />
 
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/unLinkBg"
@@ -79,17 +79,16 @@
             <TextView
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="请建立呼叫..."
+                android:layout_marginTop="9dp"
+                android:text="通话中..."
                 android:textColor="#F5F6F7"
                 android:textSize="14sp"
-                android:layout_marginTop="9dp"
                 app:layout_constraintEnd_toEndOf="parent"
                 app:layout_constraintStart_toStartOf="parent"
                 app:layout_constraintTop_toBottomOf="@+id/imageView" />
 
 
         </androidx.constraintlayout.widget.ConstraintLayout>
-
 
 
     </FrameLayout>
@@ -107,8 +106,8 @@
             android:layout_width="match_parent"
             android:layout_height="80dp"
             android:layout_marginLeft="20dp"
-            android:layout_marginRight="20dp"
             android:layout_marginTop="40dp"
+            android:layout_marginRight="20dp"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent">
@@ -154,33 +153,13 @@
 
         </androidx.constraintlayout.widget.ConstraintLayout>
 
-        <!-- 通话控制按钮 -->
-        <android.widget.Button
-            android:id="@+id/connectBtn"
-            android:layout_width="match_parent"
-            android:layout_height="48dp"
-            android:layout_marginStart="18dp"
-            android:layout_marginEnd="18dp"
-            android:layout_marginTop="27dp"
-            android:layout_marginBottom="54dp"
-            android:background="@drawable/shape_link_btn_background_normal"
-            android:gravity="center"
-            android:text="点击建立呼叫"
-            android:textColor="@color/white"
-            android:textSize="16sp"
-            android:textStyle="bold"
-            app:layout_constraintBottom_toBottomOf="parent"
-            app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/constraintLayout" />
-
-        <android.widget.Button
+        <Button
             android:id="@+id/cancelBtn"
             android:layout_width="match_parent"
             android:layout_height="48dp"
             android:layout_marginStart="18dp"
-            android:layout_marginEnd="18dp"
             android:layout_marginTop="27dp"
+            android:layout_marginEnd="18dp"
             android:layout_marginBottom="54dp"
             android:background="@drawable/shape_link_btn_background_select"
             android:gravity="center"
@@ -188,7 +167,6 @@
             android:textColor="@color/white"
             android:textSize="16sp"
             android:textStyle="bold"
-            android:visibility="gone"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"

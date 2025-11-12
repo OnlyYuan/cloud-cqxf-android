@@ -1,4 +1,4 @@
-package com.mydemo.test31;
+package com.mydemo.test31.callback;
 
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -22,7 +22,7 @@ public class VideoSurfaceCallback implements SurfaceHolder.Callback {
     @Override
     public void surfaceCreated(SurfaceHolder holder) {
         Log.e(THIS_FILE, "set surface: " + holder.getSurface() + ", type: " + type);
-        PnasCallUtil.getInstance().setSurface(holder.getSurface(), type);
+        // PnasCallUtil.getInstance().setSurface(holder.getSurface(), type);
     }
 
     /**

@@ -1,12 +1,10 @@
 package com.mydemo.test31.dialog;
 
 import android.app.Dialog;
-import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.drawable.ColorDrawable;
 import android.os.Bundle;
 import android.text.TextUtils;
-import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
@@ -25,17 +23,17 @@ import com.google.android.gms.common.util.CollectionUtils;
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingGroupContact;
 import com.mpttpnas.api.TrunkingLocalContact;
-import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
-import com.mydemo.test31.MessageUiActivity;
 import com.mydemo.test31.R;
 
 import java.util.List;
+import java.util.Objects;
 
 public class CallReminderDialog extends DialogFragment {
 
     private final TrunkingCallSession callSession;
     private TextView title_text;
+    private OnBtnClickListener clickListener;
 
     public CallReminderDialog(TrunkingCallSession callSession) {
         this.callSession = callSession;
@@ -188,23 +186,20 @@ public class CallReminderDialog extends DialogFragment {
 
     private void initView(View view) {
         title_text = view.findViewById(R.id.title_text);
-
         // 接听
         Button answer_btn = view.findViewById(R.id.answer_btn);
         answer_btn.setOnClickListener(btn -> {
-            dismiss();
-            Intent intent = new Intent(requireContext(), MessageUiActivity.class);
-            intent.putExtra("comeType", 1);
-            intent.putExtra("callSession", callSession);
-            startActivity(intent);
+            if (Objects.nonNull(clickListener)) {
+                clickListener.ok(this);
+            }
         });
 
         // 挂断
         Button hang_up_btn = view.findViewById(R.id.hang_up_btn);
         hang_up_btn.setOnClickListener(btn -> {
-            dismiss();
-            // 点击取消后的逻辑
-            PnasCallUtil.getInstance().hangupActiveCall();
+            if (Objects.nonNull(clickListener)) {
+                clickListener.no(this);
+            }
         });
     }
 
@@ -214,4 +209,18 @@ public class CallReminderDialog extends DialogFragment {
         // 清理引用
         title_text = null;
     }
+
+    /**
+     * 选择结果回调接口
+     */
+    public interface OnBtnClickListener {
+        void ok(CallReminderDialog dialog);
+
+        void no(CallReminderDialog dialog);
+    }
+
+    public void setAnswerBtnListener(OnBtnClickListener clickListener) {
+        this.clickListener = clickListener;
+    }
+
 }

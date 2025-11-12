@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
-    android:layout_width="300dp"
+    android:layout_width="fill_parent"
     android:layout_height="wrap_content"
-    android:layout_gravity="center"
+    android:layout_gravity="start"
     android:background="@drawable/dialog_rounded_background"
     android:orientation="vertical">
 
@@ -13,7 +13,7 @@
         android:layout_height="wrap_content"
         android:layout_margin="10dp"
         android:background="@drawable/item_radius_background"
-        android:padding="20dp">
+        android:padding="5dp">
 
         <!-- 居中的 ImageView -->
         <ImageView
@@ -21,7 +21,6 @@
             android:layout_width="60dp"
             android:layout_height="60dp"
             android:src="@mipmap/voice_btn"
-            app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
             app:layout_constraintTop_toTopOf="parent" />
 
@@ -29,17 +28,18 @@
             android:id="@+id/title_text"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:layout_marginBottom="20dp"
-            android:gravity="center"
+            android:layout_marginLeft="10sp"
+            android:gravity="center_vertical|start"
             android:lineSpacingExtra="4dp"
             android:text="内容"
             android:textColor="@color/black"
             android:textSize="16sp"
             android:textStyle="bold"
+            app:layout_constraintBottom_toBottomOf="@+id/video_icon"
             app:layout_constraintEnd_toEndOf="parent"
-            app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/video_icon" />
+            app:layout_constraintHorizontal_bias="0.996"
+            app:layout_constraintStart_toEndOf="@+id/video_icon"
+            app:layout_constraintTop_toTopOf="@+id/video_icon" />
 
         <LinearLayout
             android:layout_width="0dp"
@@ -49,27 +49,27 @@
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
             app:layout_constraintStart_toStartOf="parent"
-            app:layout_constraintTop_toBottomOf="@+id/title_text">
+            app:layout_constraintTop_toBottomOf="@+id/video_icon">
 
             <Button
-                android:id="@+id/hang_up_btn"
-                android:layout_width="90dp"
+                android:id="@+id/btn_reject"
+                android:layout_width="120dp"
                 android:layout_height="48dp"
-                android:layout_marginEnd="10dp"
+                android:layout_marginEnd="42dp"
                 android:text="挂断"
                 android:textColor="@color/black"
-                app:backgroundTint="@color/grey"
-                app:cornerRadius="14dp" />
+                android:textSize="16sp"
+                app:backgroundTint="@color/grey" />
 
             <Button
-                android:id="@+id/answer_btn"
-                android:layout_width="90dp"
+                android:id="@+id/btn_accept"
+                android:layout_width="120dp"
                 android:layout_height="48dp"
-                android:layout_marginStart="10dp"
+                android:layout_marginStart="42dp"
                 android:text="接听"
                 android:textColor="#7E9FCF"
-                app:backgroundTint="#D7E0F8"
-                app:cornerRadius="14dp" />
+                android:textSize="16sp"
+                app:backgroundTint="#D7E0F8" />
 
         </LinearLayout>
 

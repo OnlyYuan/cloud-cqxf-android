@@ -1,8 +1,7 @@
-package com.mydemo.test31;
+package com.mydemo.test31.activity;
 
 import android.animation.ObjectAnimator;
 import android.content.Context;
-import android.content.Intent;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
@@ -24,7 +23,7 @@ import com.google.zxing.MultiFormatReader;
 import com.google.zxing.PlanarYUVLuminanceSource;
 import com.google.zxing.Result;
 import com.google.zxing.common.HybridBinarizer;
-import com.mydemo.test31.event.OpenVideoActivityEvent;
+import com.mydemo.test31.R;
 import com.mydemo.test31.event.QRScannerEvent;
 
 import org.greenrobot.eventbus.EventBus;

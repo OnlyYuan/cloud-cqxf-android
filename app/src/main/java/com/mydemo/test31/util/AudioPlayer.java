@@ -68,7 +68,7 @@ public class AudioPlayer {
                             .build()
             );
             mediaPlayer.prepareAsync(); // 异步准备，避免阻塞
-            mediaPlayer.setOnPreparedListener(mp -> mp.start());
+            mediaPlayer.setOnPreparedListener(MediaPlayer::start);
             mediaPlayer.setOnCompletionListener(mp -> stopMediaPlayer());
         } catch (IOException e) {
             e.printStackTrace();

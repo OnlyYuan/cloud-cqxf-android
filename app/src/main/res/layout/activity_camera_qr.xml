@@ -38,8 +38,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="#80000000"
-        android:padding="16dp"
-        android:orientation="horizontal">
+        android:orientation="horizontal"
+        android:padding="16dp">
 
         <Button
             android:id="@+id/btnBack"
@@ -52,10 +52,10 @@
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
+            android:gravity="center"
             android:text="二维码扫描"
             android:textColor="#FFFFFF"
-            android:textSize="18sp"
-            android:gravity="center" />
+            android:textSize="18sp" />
 
         <Button
             android:id="@+id/btnFlash"
@@ -72,10 +72,10 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:background="#80000000"
+        android:gravity="center"
         android:padding="20dp"
         android:text="将二维码放入框内，即可自动扫描"
         android:textColor="#FFFFFF"
-        android:textSize="16sp"
-        android:gravity="center" />
+        android:textSize="16sp" />
 
 </RelativeLayout>

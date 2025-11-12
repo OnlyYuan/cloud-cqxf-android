@@ -1,6 +1,5 @@
-package com.mydemo.test31;
+package com.mydemo.test31.activity;
 
-import static com.mydemo.test31.util.Util.debugH5Url;
 import static com.mydemo.test31.util.Util.h5Url;
 import static com.mydemo.test31.util.Util.pocUrl;
 
@@ -34,23 +33,22 @@ import android.widget.Toast;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 
-import com.mptt.media.BuildConfig;
 import com.mptt.media.modules.uvc.utils.ToastUtils;
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingConversation;
 import com.mpttpnas.api.TrunkingGroupContact;
-import com.mpttpnas.api.TrunkingLocalContact;
 import com.mpttpnas.api.TrunkingMessage;
 import com.mpttpnas.pnas.agent.PnasErrorCode;
+import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 import com.mpttpnas.pnaslibraryapi.PnasConfigUtil;
-import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
+import com.mpttpnas.pnaslibraryapi.PnasGisUtil;
 import com.mpttpnas.pnaslibraryapi.PnasSDK;
 import com.mpttpnas.pnaslibraryapi.PnasUserUtil;
-import com.mpttpnas.pnaslibraryapi.callback.CallStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.FloorStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GroupAffiliactionNotifyResultCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StackStartSuccessCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent;
+import com.mydemo.test31.R;
 import com.mydemo.test31.dialog.CallReminderDialog;
 import com.mydemo.test31.dialog.LinkWayDialog;
 import com.mydemo.test31.dialog.MemberListDialog;
@@ -59,8 +57,10 @@ import com.mydemo.test31.dialog.UnitListDialog;
 import com.mydemo.test31.event.CloseVideoActivityEvent;
 import com.mydemo.test31.event.OpenVideoActivityEvent;
 import com.mydemo.test31.event.QRScannerEvent;
+import com.mydemo.test31.event.ShowCallReminderDialogEvent;
 import com.mydemo.test31.service.KeepAliveService;
 import com.mydemo.test31.util.AndroidVersionUtils;
+import com.mydemo.test31.util.InvState;
 import com.mydemo.test31.util.MyProvider;
 
 import org.greenrobot.eventbus.EventBus;
@@ -126,12 +126,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     WebView webView;
 
+    // 建立连接方式 0.语音  1.视频
+    private int callType = 0;
 
-    private int callType = 0;//建立连接方式 0.语音  1.视频
-
-    //判断poc是否初始化完成
+    // 判断poc是否初始化完成
     private boolean isInitPnasUserUtilSuccess = false;
-    //h5是否调用了登录
+    // h5是否调用了登录
     private boolean isH5Login = false;
 
     // h5传入的用户名
@@ -140,18 +140,21 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     // h5传入的密码
     private String passWord = "";
 
-    private ValueCallback<Uri[]> filePathCallback; // 用于向H5返回选择结果
+    // 用于向H5返回选择结果
+    private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
     private static final int REQUEST_TAKE_PHOTO = 1002;
-    private String cameraImagePath; // 保存相机拍照的临时图片路径
-
+    // 保存相机拍照的临时图片路径
+    private String cameraImagePath;
     private int statusBarHeight;
-
 
     /**
      * 扫码结果
      */
     private String cameraResult;
+
+    private Uri photoUri = null;
+
 
     @Override
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -163,15 +166,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // 初始化页面
         setContentView(R.layout.activity_main);
         requestPermissions(permissionNeedToCheck, 1000);
-        EventBus.getDefault().register(this);
+        // 初始化EventBus
+        if (!EventBus.getDefault().isRegistered(this)) {
+            EventBus.getDefault().register(this);
+        }
         // 启动保活服务
         startKeepAliveService();
-
         // 2. 获取状态栏高度
         statusBarHeight = getStatusBarHeight();
         // 初始化视图
         initView();
+
     }
+
 
     /**
      * 二维码扫码事件
@@ -319,27 +326,24 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      */
     private void showSelectPicDialog() {
         SelectPicDialog selectPicDialog = new SelectPicDialog();
-        selectPicDialog.setLinkListener(new SelectPicDialog.OnSelectPicDialogListener() {
-            @Override
-            public void onOptionSelected(int type) {
-                if (type == 0) {//相机
-                    goCameraFun();
-                }else if (type ==1){//相册
-                    goAlbum();
-                }else {
-                    Uri[] results = null;
-                    // 将结果返回给H5
-                    if (filePathCallback != null) {
-                        filePathCallback.onReceiveValue(results);
-                        filePathCallback = null; // 重置回调，避免内存泄漏
-                    }
+        selectPicDialog.setLinkListener(type -> {
+            if (type == 0) {//相机
+                goCameraFun();
+            } else if (type == 1) {//相册
+                goAlbum();
+            } else {
+                Uri[] results = null;
+                // 将结果返回给H5
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(results);
+                    // 重置回调，避免内存泄漏
+                    filePathCallback = null;
                 }
             }
         });
         selectPicDialog.show(getSupportFragmentManager(), "albumDialog");
     }
 
-    private Uri photoUri = null;
 
     /**
      * 打开相机
@@ -383,128 +387,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                 MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         pickIntent.setType("image/* video/*"); // 只选择图片
         startActivityForResult(pickIntent, FILE_CHOOSER_REQUEST_CODE);
-    }
-
-
-    /**
-     * 注册 JS 接口，暴露给 H5 调用
-     */
-    private void registerJsInterface() {
-        // 第一个参数：接口实现类，第二个参数：JS 中调用的对象名
-        webView.addJavascriptInterface(new NativeInterface(), "AndroidNative");
-    }
-
-    /**
-     * 原生接口实现类
-     * 所有暴露给 JS 的方法必须添加 @JavascriptInterface 注解
-     */
-    public class NativeInterface {
-        /**
-         * 弹窗选择
-         */
-        @JavascriptInterface
-        public void showLinkWayFun() {
-            // 在主线程中显示 Toast（JS 调用可能在子线程）
-            runOnUiThread(MainActivity.this::showLinkWayDialog);
-        }
-
-        /**
-         * 登录poc
-         */
-        @JavascriptInterface
-        public void loginPoc(String user, String password) {
-            // Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
-            useName = user;
-            passWord = password;
-            isH5Login = true;
-            startLogin();
-        }
-
-        /**
-         * 重新登录poc
-         */
-        @JavascriptInterface
-        public void relogin() {
-            Toast.makeText(MainActivity.this, "重新登录：用户名："
-                    + useName + "密码： " + passWord, Toast.LENGTH_SHORT).show();
-            if (!StringUtils.isNullOrEmpty(useName)) {
-                isH5Login = true;
-                PnasUserUtil instance = PnasUserUtil.getInstance();
-                if (!instance.isLogin()) {
-                    instance.relogin();
-                }
-            }
-        }
-
-
-        /**
-         * 进入到视频界面
-         *
-         * @param user      对方账号名
-         * @param mCallType 通话类型 0.语音 1.视频
-         */
-        @JavascriptInterface
-        public void startCallUi(String user, int mCallType) {
-            Toast.makeText(MainActivity.this, "用户名：" + user + "通话类型： " + mCallType, Toast.LENGTH_SHORT).show();
-            goMessageUiFun(user, mCallType);
-        }
-
-        /**
-         * 示例3：原生调用 JS 方法（反向调用）
-         */
-        @JavascriptInterface
-        public void callJsFunction() {
-            runOnUiThread(() -> {
-                // 调用 JS 中的 showMessage 方法，并传递参数
-                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')",
-                        result -> {
-                            // JS 方法的返回值（可选处理）
-                            Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
-                        });
-            });
-        }
-
-        @JavascriptInterface
-        public int getStatusBarHeight() {
-            return statusBarHeight;
-        }
-
-        @JavascriptInterface
-        public void setStatusBarStyle(String style) {
-            // H5可以动态改变状态栏样式
-            runOnUiThread(() -> {
-                if ("dark".equals(style)) {
-                    setLightStatusBar(false);
-                } else {
-                    setLightStatusBar(true);
-                }
-            });
-        }
-
-        @JavascriptInterface
-        public void setStatusBarColor(String color) {
-            runOnUiThread(() -> {
-                try {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        getWindow().setStatusBarColor(Color.parseColor(color));
-                    }
-                } catch (Exception e) {
-                    e.printStackTrace();
-                }
-            });
-        }
-
-
-        /**
-         * 打开扫码
-         */
-        @JavascriptInterface
-        public String showQRScanner() {
-            // 启动扫描界面
-            Intent intent = new Intent(MainActivity.this, CameraQRScannerActivity.class);
-            startActivity(intent);
-            return cameraResult;
-        }
     }
 
 
@@ -656,14 +538,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         PnasConfigUtil.getInstance().setUseDMSConfig(true);
         // 呼叫记录保存在message
         PnasConfigUtil.getInstance().setSaveCallLogInMessage(true);
-        //  组呼录音保存在message
+        // 组呼录音保存在message
         PnasConfigUtil.getInstance().setCallSoundRecordIntoMessage(true);
         // 日志
         PnasConfigUtil.getInstance().setLogLevel(6);
+        PnasGisUtil.getInstance().init();
         // 初始化SDK
         PnasSDK.getInstance().init(this);
     }
 
+    /**
+     * 协议栈启动结果回调
+     */
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onStackStartSuccessCallbackEvent(StackStartSuccessCallbackEvent event) {
         if (event.getIsSuccess() == 1) {
@@ -686,6 +572,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
             // Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
+            PnasGisUtil.getInstance().login();
         }
     }
 
@@ -694,7 +581,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         TrunkingConversation conversation;
         TrunkingMessage message;
         PnasErrorCode errorCode;
-        //  PnasContactUtil.getInstance().getAllUserContactList()
+
     }
 
 
@@ -707,29 +594,32 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         startForegroundService(intent);
     }
 
-    TrunkingCallSession callSession;
+    private TrunkingCallSession callSession;
+
+    private CallReminderDialog callReminderDialog = null;
 
     /**
      * 呼叫状态变化回调
      */
     @Subscribe(threadMode = ThreadMode.MAIN)
-    public void onCallStateChangedCallbackEvent(CallStateChangedCallbackEvent event) {
+    public void onShowCallReminderDialogEvent(ShowCallReminderDialogEvent event) {
         callSession = event.getCallSession();
-        if (callSession != null && !callSession.isAfterEnded()) {
-            if (callSession.isIncoming() && callSession.isBeforeConfirmed()) {
+        if (Objects.isNull(callSession)) {
+            return;
+        }
+        if (!callSession.isAfterEnded()) {
+            // 早期媒体/振铃中
+            if (callSession.isIncoming() && callSession.isBeforeConfirmed()
+                    && callSession.getCallState() == InvState.EARLY) {
                 // 弹窗
-                acceptDialog(event);
-            } else if (callSession.getCallState() == 4
-                    || callSession.getCallState() == 5) {
+                acceptDialog(event.callId, callSession);
+            } else if (callSession.getCallState() == InvState.CONFIRMED) {
                 // 自己接听：callState = 4 接听  对方接听：callState = 5 接听
-                if (callSession.isVideoCall()) {
-                    OpenVideoActivityEvent openVideoActivityEvent = new OpenVideoActivityEvent(event.callId,
-                            event.callSession);
-                    openVideoActivityEvent.setCallReminderDialog(callReminderDialog);
-                    EventBus.getDefault().post(openVideoActivityEvent);
-                }
+                OpenVideoActivityEvent openVideoActivityEvent = new OpenVideoActivityEvent(event.callId,
+                        event.callSession);
+                EventBus.getDefault().post(openVideoActivityEvent);
             }
-        } else {
+        } else if (callSession.getCallState() == InvState.DISCONNECTED) {
             if (Objects.nonNull(callReminderDialog)) {
                 callReminderDialog.dismiss();
                 callReminderDialog = null;
@@ -738,7 +628,38 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
     }
 
-    // 处理返回按钮点击
+    /**
+     * 来电弹窗
+     */
+    private void acceptDialog(int callId, TrunkingCallSession callSession) {
+        if (Objects.nonNull(callReminderDialog)) {
+            callReminderDialog.dismiss();
+            callReminderDialog = null;
+        }
+        callReminderDialog = new CallReminderDialog(callSession);
+        callReminderDialog.setAnswerBtnListener(new CallReminderDialog.OnBtnClickListener() {
+            @Override
+            public void ok(CallReminderDialog dialog) {
+                dialog.dismiss();
+                Intent intent = new Intent(MainActivity.this, MessageUiActivity.class);
+                intent.putExtra("comeType", 1);
+                intent.putExtra("callSession", callSession);
+                startActivity(intent);
+            }
+
+            // 点击取消后的逻辑
+            @Override
+            public void no(CallReminderDialog dialog) {
+                dialog.dismiss();
+                PnasCallUtil.getInstance().hangupActiveCall();
+            }
+        });
+        callReminderDialog.show(getSupportFragmentManager(), "CallReminderDialog");
+    }
+
+    /**
+     * 处理返回按钮点击
+     */
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == android.R.id.home) {
@@ -775,17 +696,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     @Override
     public void onClick(View v) {
 
-    }
-
-    public void getContantList() {
-        List<TrunkingGroupContact> list = PnasContactUtil.getInstance().getMyGroupList();
-        for (int i = 0; i < list.size(); i++) {
-            Log.d(TAG, "列表数据：" + list.get(i).toString());
-        }
-        List<TrunkingLocalContact> memberList = PnasContactUtil.getInstance().getGroupContactList(list.get(0).getGroupGdn());
-        for (int i = 0; i < memberList.size(); i++) {
-            Log.d(TAG, "成员数据：" + memberList.get(i).getName());
-        }
     }
 
 
@@ -832,20 +742,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         dialog.show(getSupportFragmentManager(), "fragment");
     }
 
-    private CallReminderDialog callReminderDialog = null;
-
-    /**
-     * 来电弹窗
-     */
-    private void acceptDialog(CallStateChangedCallbackEvent event) {
-        if (Objects.nonNull(callReminderDialog)) {
-            return;
-        }
-        callReminderDialog = new CallReminderDialog(callSession);
-        callReminderDialog.show(getSupportFragmentManager(), "CallReminderDialog");
-    }
-
-
     /**
      * 进入到视频界面
      *
@@ -857,9 +753,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         Intent intent = new Intent(MainActivity.this, MessageUiActivity.class);
         intent.putExtra("account", Udn);
         intent.putExtra("callType", callType);
+        intent.putExtra("comeType", 0);
         startActivity(intent);
     }
-
 
     @Override
     public void onBackPressed() {
@@ -869,4 +765,125 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             super.onBackPressed();
         }
     }
+
+    /**
+     * 注册 JS 接口，暴露给 H5 调用
+     */
+    private void registerJsInterface() {
+        // 第一个参数：接口实现类，第二个参数：JS 中调用的对象名
+        webView.addJavascriptInterface(new NativeInterface(), "AndroidNative");
+    }
+
+    /**
+     * 原生接口实现类
+     * 所有暴露给 JS 的方法必须添加 @JavascriptInterface 注解
+     */
+    public class NativeInterface {
+        /**
+         * 弹窗选择
+         */
+        @JavascriptInterface
+        public void showLinkWayFun() {
+            // 在主线程中显示 Toast（JS 调用可能在子线程）
+            runOnUiThread(MainActivity.this::showLinkWayDialog);
+        }
+
+        /**
+         * 登录poc
+         */
+        @JavascriptInterface
+        public void loginPoc(String user, String password) {
+            // Toast.makeText(MainActivity.this, "用户名：" + user + "密码： " + password, Toast.LENGTH_SHORT).show();
+            useName = user;
+            passWord = password;
+            isH5Login = true;
+            startLogin();
+        }
+
+        /**
+         * 重新登录poc
+         */
+        @JavascriptInterface
+        public void relogin() {
+            Toast.makeText(MainActivity.this, "重新登录：用户名："
+                    + useName + "密码： " + passWord, Toast.LENGTH_SHORT).show();
+            if (!StringUtils.isNullOrEmpty(useName)) {
+                isH5Login = true;
+                PnasUserUtil instance = PnasUserUtil.getInstance();
+                if (!instance.isLogin()) {
+                    instance.relogin();
+                }
+            }
+        }
+
+        /**
+         * 进入到视频界面
+         *
+         * @param user      对方账号名
+         * @param mCallType 通话类型 0.语音 1.视频
+         */
+        @JavascriptInterface
+        public void startCallUi(String user, int mCallType) {
+            // Toast.makeText(MainActivity.this, "用户名：" + user + "通话类型： " + mCallType, Toast.LENGTH_SHORT).show();
+            goMessageUiFun(user, mCallType);
+        }
+
+        /**
+         * 示例3：原生调用 JS 方法（反向调用）
+         */
+        @JavascriptInterface
+        public void callJsFunction() {
+            runOnUiThread(() -> {
+                // 调用 JS 中的 showMessage 方法，并传递参数
+                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')",
+                        result -> {
+                            // JS 方法的返回值（可选处理）
+                            Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
+                        });
+            });
+        }
+
+        @JavascriptInterface
+        public int getStatusBarHeight() {
+            return statusBarHeight;
+        }
+
+        @JavascriptInterface
+        public void setStatusBarStyle(String style) {
+            // H5可以动态改变状态栏样式
+            runOnUiThread(() -> {
+                if ("dark".equals(style)) {
+                    setLightStatusBar(false);
+                } else {
+                    setLightStatusBar(true);
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public void setStatusBarColor(String color) {
+            runOnUiThread(() -> {
+                try {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        getWindow().setStatusBarColor(Color.parseColor(color));
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            });
+        }
+
+        /**
+         * 打开扫码
+         */
+        @JavascriptInterface
+        public String showQRScanner() {
+            // 启动扫描界面
+            Intent intent = new Intent(MainActivity.this, CameraQRScannerActivity.class);
+            startActivity(intent);
+            return cameraResult;
+        }
+    }
+
+
 }

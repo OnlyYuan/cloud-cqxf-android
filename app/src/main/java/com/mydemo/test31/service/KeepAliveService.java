@@ -84,19 +84,21 @@ public class KeepAliveService extends Service {
     public void onCreate() {
         super.onCreate();
         Log.d(TAG, "onCreate: 保活服务初始化");
-
         initializeComponents();
     }
 
+    /**
+     * 每次startService()都会调用
+     */
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand: 服务命令执行");
 
         // 启动前台服务
-        startForegroundService();
+        // startForegroundService();
 
         // 处理Intent
-        handleIntent(intent);
+        // handleIntent(intent);
 
         return START_STICKY;
     }
@@ -137,7 +139,6 @@ public class KeepAliveService extends Service {
 
             // 获取唤醒锁
             acquireWakeLock();
-
         } catch (Exception e) {
             Log.e(TAG, "initializeComponents: 初始化失败", e);
         }
@@ -337,7 +338,6 @@ public class KeepAliveService extends Service {
                     .setOngoing(true)
                     .setWhen(System.currentTimeMillis())
                     .build();
-
         } catch (Exception e) {
             Log.e(TAG, "createKeepAliveNotification: 创建保活通知失败", e);
             return createFallbackNotification();
@@ -526,11 +526,8 @@ public class KeepAliveService extends Service {
             mainIntent.putExtra(EXTRA_CALLER_NUMBER, callerNumber);
             mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
 
-            return PendingIntent.getActivity(this,
-                    generateRequestCode("main"),
-                    mainIntent,
-                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
-
+            return PendingIntent.getActivity(this, generateRequestCode("main"),
+                    mainIntent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
         } catch (Exception e) {
             Log.e(TAG, "createMainPendingIntent: 创建主PendingIntent失败", e);
             return null;

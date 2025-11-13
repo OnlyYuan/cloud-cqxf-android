@@ -1,14 +1,17 @@
 package com.mydemo.test31.activity;
 
 import android.os.Bundle;
+import android.os.Handler;
 import android.util.Log;
 import android.view.Gravity;
+import android.view.MotionEvent;
 import android.view.SurfaceView;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
+import android.widget.RelativeLayout;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -46,11 +49,17 @@ public class MessageUiActivity extends AppCompatActivity {
     private ImageView voiceBtn = null;
     private ImageView closeBtn = null;
     private ImageView volumeBtn = null;
+    private ImageView cameraSwitchBtn = null;
 
     // 视频通话区域
     private FrameLayout loVideo = null;
-    private SurfaceView renderView;
+    private SurfaceView remoteRenderView;  // 远程视频画面
+    private SurfaceView localRenderView;   // 本地视频画面
     private ConstraintLayout unLinkBg;
+
+    // 小窗口相关
+    private RelativeLayout smallVideoContainer;
+    private FrameLayout smallVideoView;
 
     // 创建连接的方式 0.语音 1.视频
     private int callType = 0;
@@ -74,6 +83,31 @@ public class MessageUiActivity extends AppCompatActivity {
     // 通话状态跟踪
     private boolean isCallActive = false;
     private boolean isCallEnded = false;
+
+    // 小窗口拖动相关变量
+    private float dX, dY;
+
+    // 窗口切换状态：true-小窗口显示本地视频，大窗口显示远程视频；false-小窗口显示远程视频，大窗口显示本地视频
+    private boolean isLocalVideoInSmallWindow = true;
+
+    // 摄像头状态：true-前置摄像头，false-后置摄像头
+    private boolean isFrontCamera = true;
+
+    // 双击检测相关
+    private Handler doubleClickHandler = new Handler();
+    private int clickCount = 0;
+    private static final int DOUBLE_CLICK_TIME = 300; // 双击时间间隔（毫秒）
+    private Runnable doubleClickRunnable;
+
+    // 防止快速点击导致的重复切换
+    private boolean isSwitching = false;
+    private static final long SWITCH_COOLDOWN = 800; // 切换冷却时间（毫秒），适当延长
+
+    // 频繁操作检测
+    private long lastSwitchTime = 0;
+    private static final long FREQUENT_OPERATION_LIMIT = 2000; // 2秒内操作限制
+    private int switchCountInShortTime = 0;
+    private boolean isFrequentOperationBlocked = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -116,6 +150,7 @@ public class MessageUiActivity extends AppCompatActivity {
                     isCallActive = true;
                     unLinkBg.setVisibility(View.GONE);
                     loVideo.setVisibility(View.VISIBLE);
+                    setupVideoViews(); // 设置视频视图
                 } else {
                     Log.e(TAG, "接听失败");
                     Toast.makeText(this, "接听失败", Toast.LENGTH_SHORT).show();
@@ -133,6 +168,7 @@ public class MessageUiActivity extends AppCompatActivity {
             isCallActive = true;
             unLinkBg.setVisibility(View.GONE);
             loVideo.setVisibility(View.VISIBLE);
+            setupVideoViews(); // 设置视频视图
         }
     }
 
@@ -144,18 +180,269 @@ public class MessageUiActivity extends AppCompatActivity {
         closeBtn = findViewById(R.id.close_btn);
         unLinkBg = findViewById(R.id.unLinkBg);
         volumeBtn = findViewById(R.id.volume_btn);
-        renderView = new SurfaceView(this);
+        cameraSwitchBtn = findViewById(R.id.cameraSwitchBtn);
+
+        // 小窗口相关视图
+        smallVideoContainer = findViewById(R.id.smallVideoContainer);
+        smallVideoView = findViewById(R.id.smallVideoView);
 
         initVoiceMute();
-        FrameLayout.LayoutParams lp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
-                ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.gravity = Gravity.CENTER;
-        renderView.setLayoutParams(lp);
-        renderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
-        loVideo.addView(renderView, 0);
-        renderView.setVisibility(View.VISIBLE);
         setMicImage();
         setVoiceImage();
+
+        // 初始化双击检测
+        initDoubleClickDetection();
+    }
+
+    /**
+     * 初始化双击检测
+     */
+    private void initDoubleClickDetection() {
+        doubleClickRunnable = new Runnable() {
+            @Override
+            public void run() {
+                clickCount = 0;
+            }
+        };
+    }
+
+    /**
+     * 检查是否操作过于频繁
+     */
+    private boolean checkFrequentOperation() {
+        long currentTime = System.currentTimeMillis();
+
+        // 如果已经被限制操作，检查限制是否解除
+        if (isFrequentOperationBlocked) {
+            if (currentTime - lastSwitchTime > FREQUENT_OPERATION_LIMIT) {
+                // 解除限制
+                isFrequentOperationBlocked = false;
+                switchCountInShortTime = 0;
+                Log.i(TAG, "频繁操作限制已解除");
+            } else {
+                // 仍在限制期内
+                long remainingTime = FREQUENT_OPERATION_LIMIT - (currentTime - lastSwitchTime);
+                Toast.makeText(this, "操作过于频繁，请稍后再试 (" + (remainingTime / 1000) + "秒)",
+                        Toast.LENGTH_SHORT).show();
+                return true;
+            }
+        }
+
+        // 检查短时间内操作次数
+        if (currentTime - lastSwitchTime < FREQUENT_OPERATION_LIMIT) {
+            switchCountInShortTime++;
+            Log.i(TAG, "短时间内切换次数: " + switchCountInShortTime);
+
+            // 如果2秒内操作超过3次，触发限制
+            if (switchCountInShortTime >= 3) {
+                isFrequentOperationBlocked = true;
+                Toast.makeText(this, "操作过于频繁，请等待" + (FREQUENT_OPERATION_LIMIT / 1000) + "秒后再试",
+                        Toast.LENGTH_SHORT).show();
+                return true;
+            }
+        } else {
+            // 重置计数
+            switchCountInShortTime = 1;
+        }
+
+        lastSwitchTime = currentTime;
+        return false;
+    }
+
+    /**
+     * 设置视频视图
+     */
+    private void setupVideoViews() {
+        // 清除之前的视图
+        loVideo.removeAllViews();
+        smallVideoView.removeAllViews();
+
+        // 创建远程视频画面
+        remoteRenderView = new SurfaceView(this);
+        FrameLayout.LayoutParams remoteLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        remoteLp.gravity = Gravity.CENTER;
+        remoteRenderView.setLayoutParams(remoteLp);
+
+        // 创建本地视频画面
+        localRenderView = new SurfaceView(this);
+        FrameLayout.LayoutParams localLp = new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT,
+                ViewGroup.LayoutParams.MATCH_PARENT);
+        localRenderView.setLayoutParams(localLp);
+
+        // 初始状态：大窗口显示远程视频，小窗口显示本地视频
+        setupInitialVideoLayout();
+    }
+
+    /**
+     * 设置初始视频布局
+     */
+    private void setupInitialVideoLayout() {
+        if (isLocalVideoInSmallWindow) {
+            // 大窗口显示远程视频
+            setupRemoteVideoInLargeWindow();
+            // 小窗口显示本地视频
+            setupLocalVideoInSmallWindow();
+            // 显示摄像头切换按钮
+            cameraSwitchBtn.setVisibility(View.VISIBLE);
+        } else {
+            // 大窗口显示本地视频
+            setupLocalVideoInLargeWindow();
+            // 小窗口显示远程视频
+            setupRemoteVideoInSmallWindow();
+            // 隐藏摄像头切换按钮（远程视频不需要切换摄像头）
+            cameraSwitchBtn.setVisibility(View.GONE);
+        }
+    }
+
+    /**
+     * 在大窗口显示远程视频
+     */
+    private void setupRemoteVideoInLargeWindow() {
+        if (remoteRenderView != null) {
+            remoteRenderView.getHolder().removeCallback(null);
+            loVideo.addView(remoteRenderView, 0);
+            remoteRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
+            remoteRenderView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * 在小窗口显示远程视频
+     */
+    private void setupRemoteVideoInSmallWindow() {
+        if (remoteRenderView != null) {
+            remoteRenderView.getHolder().removeCallback(null);
+            smallVideoView.addView(remoteRenderView);
+            remoteRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
+            remoteRenderView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * 在大窗口显示本地视频
+     */
+    private void setupLocalVideoInLargeWindow() {
+        if (localRenderView != null) {
+            localRenderView.getHolder().removeCallback(null);
+            loVideo.addView(localRenderView, 0);
+            localRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_LOCAL_VIDEO));
+            localRenderView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * 在小窗口显示本地视频
+     */
+    private void setupLocalVideoInSmallWindow() {
+        if (localRenderView != null) {
+            localRenderView.getHolder().removeCallback(null);
+            smallVideoView.addView(localRenderView);
+            localRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_LOCAL_VIDEO));
+            localRenderView.setVisibility(View.VISIBLE);
+        }
+    }
+
+    /**
+     * 切换视频窗口
+     */
+    private void switchVideoWindows() {
+        // 防止快速重复点击
+        if (isSwitching) {
+            Log.i(TAG, "正在切换中，请稍后");
+            Toast.makeText(this, "正在切换中，请稍后", Toast.LENGTH_SHORT).show();
+            return;
+        }
+
+        // 检查频繁操作限制
+        if (checkFrequentOperation()) {
+            return;
+        }
+
+        if (!isCallActive || isCallEnded) {
+            Log.w(TAG, "通话未激活或已结束，无法切换视频");
+            return;
+        }
+
+        isSwitching = true;
+        isLocalVideoInSmallWindow = !isLocalVideoInSmallWindow;
+
+        Log.i(TAG, "切换视频窗口，当前模式：" + (isLocalVideoInSmallWindow ? "小窗口显示本地视频" : "小窗口显示远程视频"));
+
+        try {
+            // 清除之前的视图
+            loVideo.removeAllViews();
+            smallVideoView.removeAllViews();
+
+            if (isLocalVideoInSmallWindow) {
+                // 切换到大窗口显示远程视频，小窗口显示本地视频
+                setupRemoteVideoInLargeWindow();
+                setupLocalVideoInSmallWindow();
+                cameraSwitchBtn.setVisibility(View.VISIBLE);
+                Toast.makeText(this, "已切换到对方画面", Toast.LENGTH_SHORT).show();
+            } else {
+                // 切换到大窗口显示本地视频，小窗口显示远程视频
+                setupLocalVideoInLargeWindow();
+                setupRemoteVideoInSmallWindow();
+                cameraSwitchBtn.setVisibility(View.GONE);
+                Toast.makeText(this, "已切换到本人画面", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "切换视频窗口失败", e);
+            Toast.makeText(this, "切换失败，请重试", Toast.LENGTH_SHORT).show();
+        } finally {
+            // 重置切换状态
+            doubleClickHandler.postDelayed(() -> {
+                isSwitching = false;
+            }, SWITCH_COOLDOWN);
+        }
+    }
+
+    /**
+     * 双击小窗口放大
+     */
+    private void handleDoubleClick() {
+        if (isSwitching) {
+            return;
+        }
+
+        // 检查频繁操作限制
+        if (checkFrequentOperation()) {
+            return;
+        }
+
+        Log.i(TAG, "双击小窗口，切换大小窗口");
+        switchVideoWindows();
+    }
+
+    /**
+     * 切换摄像头
+     */
+    private void switchCamera() {
+        if (!isCallActive || isCallEnded) {
+            Log.w(TAG, "通话未激活或已结束，无法切换摄像头");
+            return;
+        }
+
+        // 检查频繁操作限制
+        if (checkFrequentOperation()) {
+            return;
+        }
+
+        isFrontCamera = !isFrontCamera;
+        try {
+            // 调用SDK的摄像头切换方法
+            PnasCallUtil.getInstance().switchCamera();
+            Log.i(TAG, "摄像头切换成功，当前摄像头：" + (isFrontCamera ? "前置" : "后置"));
+            Toast.makeText(this, isFrontCamera ? "前置摄像头" : "后置摄像头", Toast.LENGTH_SHORT).show();
+        } catch (Exception e) {
+            Log.e(TAG, "摄像头切换失败", e);
+            Toast.makeText(this, "摄像头切换失败", Toast.LENGTH_SHORT).show();
+            // 发生异常时恢复状态
+            isFrontCamera = !isFrontCamera;
+        }
     }
 
     private void initVoiceMute() {
@@ -183,8 +470,17 @@ public class MessageUiActivity extends AppCompatActivity {
         // 麦克风
         micBtn.setOnClickListener(view -> setMicFun());
 
-        // 调节音量
-        volumeBtn.setOnClickListener(view -> voiceMuteManager.raiseVolume());
+        // 切换视频窗口按钮 - 添加防抖处理
+        volumeBtn.setOnClickListener(view -> {
+            if (!isSwitching) {
+                switchVideoWindows();
+            } else {
+                Toast.makeText(this, "正在切换中，请稍后", Toast.LENGTH_SHORT).show();
+            }
+        });
+
+        // 摄像头切换按钮
+        cameraSwitchBtn.setOnClickListener(view -> switchCamera());
 
         closeBtn.setOnClickListener(view -> {
             if (isCallActive && !isCallEnded) {
@@ -194,51 +490,155 @@ public class MessageUiActivity extends AppCompatActivity {
             }
             finish();
         });
+
+        // 小窗口拖动监听和双击监听
+        setupSmallVideoTouchListener();
+    }
+
+    /**
+     * 设置小窗口触摸监听（拖动 + 双击）
+     */
+    private void setupSmallVideoTouchListener() {
+        smallVideoContainer.setOnTouchListener(new View.OnTouchListener() {
+            private long lastClickTime = 0;
+
+            @Override
+            public boolean onTouch(View view, MotionEvent event) {
+                switch (event.getAction()) {
+                    case MotionEvent.ACTION_DOWN:
+                        dX = view.getX() - event.getRawX();
+                        dY = view.getY() - event.getRawY();
+
+                        // 双击检测
+                        long clickTime = System.currentTimeMillis();
+                        if (clickTime - lastClickTime < DOUBLE_CLICK_TIME) {
+                            // 双击事件
+                            handleDoubleClick();
+                            lastClickTime = 0;
+                            return true; // 消耗双击事件，不触发拖动
+                        } else {
+                            lastClickTime = clickTime;
+                        }
+                        break;
+
+                    case MotionEvent.ACTION_MOVE:
+                        // 如果是双击后的移动，不处理拖动
+                        if (System.currentTimeMillis() - lastClickTime < DOUBLE_CLICK_TIME) {
+                            return true;
+                        }
+
+                        float newX = event.getRawX() + dX;
+                        float newY = event.getRawY() + dY;
+
+                        // 限制小窗口在屏幕范围内
+                        FrameLayout parent = (FrameLayout) view.getParent();
+                        if (parent != null) {
+                            int maxX = parent.getWidth() - view.getWidth();
+                            int maxY = parent.getHeight() - view.getHeight();
+
+                            newX = Math.max(0, Math.min(newX, maxX));
+                            newY = Math.max(0, Math.min(newY, maxY));
+                        }
+
+                        view.animate()
+                                .x(newX)
+                                .y(newY)
+                                .setDuration(0)
+                                .start();
+                        break;
+
+                    case MotionEvent.ACTION_UP:
+                        // 如果不是双击，处理拖动结束的吸附
+                        if (System.currentTimeMillis() - lastClickTime >= DOUBLE_CLICK_TIME) {
+                            snapToEdge(view);
+                        }
+                        break;
+                }
+                return true;
+            }
+        });
+    }
+
+    /**
+     * 小窗口吸附到边缘
+     */
+    private void snapToEdge(View view) {
+        float x = view.getX();
+        float y = view.getY();
+        FrameLayout parent = (FrameLayout) view.getParent();
+
+        if (parent != null) {
+            int centerX = parent.getWidth() / 2;
+
+            // 如果小窗口在屏幕左侧，吸附到左边；否则吸附到右边
+            float targetX = (x + view.getWidth() / 2) < centerX ? 0 : parent.getWidth() - view.getWidth();
+
+            view.animate()
+                    .x(targetX)
+                    .y(y)
+                    .setDuration(200)
+                    .start();
+        }
     }
 
     /**
      * 设置麦克风开闭
      */
     private void setMicFun() {
-        if (!isMicMuted) {
-            // 麦克风禁音
-            micManager.muteMic();
-            Log.i(TAG, "麦克风已禁音");
-        } else {
-            // 麦克风打开
-            micManager.unmuteMic();
-            Log.i(TAG, "麦克风已打开");
+        if (!isCallActive || isCallEnded) {
+            Log.w(TAG, "通话未激活或已结束，无法操作麦克风");
+            return;
         }
-        isMicMuted = !isMicMuted;
-        setMicImage();
+
+        try {
+            if (!isMicMuted) {
+                // 麦克风禁音
+                micManager.muteMic();
+                Log.i(TAG, "麦克风已禁音");
+            } else {
+                // 麦克风打开
+                micManager.unmuteMic();
+                Log.i(TAG, "麦克风已打开");
+            }
+            isMicMuted = !isMicMuted;
+            setMicImage();
+        } catch (Exception e) {
+            Log.e(TAG, "麦克风操作失败", e);
+            Toast.makeText(this, "麦克风操作失败", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
      * 设置外放开闭音
      */
     private void setVoiceFun() {
-        if (isVoiceOn) {
-            originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
-            voiceMuteManager.setMusicVolumeToZero(0);
-            Log.i(TAG, "扬声器已关闭");
-        } else {
-            voiceMuteManager.setMusicVolumeToZero(originalVolume);
-            Log.i(TAG, "扬声器已打开");
+        if (!isCallActive || isCallEnded) {
+            Log.w(TAG, "通话未激活或已结束，无法操作扬声器");
+            return;
         }
-        isVoiceOn = !isVoiceOn;
-        setVoiceImage();
+
+        try {
+            if (isVoiceOn) {
+                originalVolume = voiceMuteManager.getCurrentMusicVolume(); // 保存原始音量
+                voiceMuteManager.setMusicVolumeToZero(0);
+                Log.i(TAG, "扬声器已关闭");
+            } else {
+                voiceMuteManager.setMusicVolumeToZero(originalVolume);
+                Log.i(TAG, "扬声器已打开");
+            }
+            isVoiceOn = !isVoiceOn;
+            setVoiceImage();
+        } catch (Exception e) {
+            Log.e(TAG, "扬声器操作失败", e);
+            Toast.makeText(this, "扬声器操作失败", Toast.LENGTH_SHORT).show();
+        }
     }
 
     /**
      * 设置麦克风图片
      */
     private void setMicImage() {
-        int imgId = R.mipmap.ic_launcher;
-        if (isMicMuted) {
-            imgId = R.mipmap.mic_off;
-        } else {
-            imgId = R.mipmap.mic_on;
-        }
+        int imgId = isMicMuted ? R.mipmap.mic_off : R.mipmap.mic_on;
         micBtn.setImageResource(imgId);
     }
 
@@ -246,12 +646,7 @@ public class MessageUiActivity extends AppCompatActivity {
      * 设置是否禁播放音
      */
     private void setVoiceImage() {
-        int imgId = R.mipmap.ic_launcher;
-        if (isVoiceOn) {
-            imgId = R.mipmap.music_on;
-        } else {
-            imgId = R.mipmap.music_off;
-        }
+        int imgId = isVoiceOn ? R.mipmap.music_on : R.mipmap.music_off;
         voiceBtn.setImageResource(imgId);
     }
 
@@ -347,6 +742,11 @@ public class MessageUiActivity extends AppCompatActivity {
         // 取消事件注册
         if (EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().unregister(this);
+        }
+        // 移除双击检测的Handler回调
+        if (doubleClickHandler != null) {
+            doubleClickHandler.removeCallbacks(doubleClickRunnable);
+            doubleClickHandler.removeCallbacksAndMessages(null);
         }
         Log.i(TAG, "MessageUiActivity 已销毁");
     }

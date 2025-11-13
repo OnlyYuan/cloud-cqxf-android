@@ -573,6 +573,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             // Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
             PnasGisUtil.getInstance().login();
+        } else {
+            PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456", "113.204.49.3:8062", null);
+            PnasGisUtil.getInstance().login();
         }
     }
 

@@ -3,5 +3,6 @@
     <!-- 允许访问应用私有目录下的图片 -->
     <external-files-path
         name="my_photos"
-        path="Pictures" />
+        path="Pictures/" />
+    <external-files-path name="my_images" path="Pictures/" />
 </paths>

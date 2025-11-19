@@ -1,4 +1,4 @@
-package com.mydemo.test31.util;
+package com.mydemo.test31.helper;
 
 import android.Manifest;
 import android.content.Context;

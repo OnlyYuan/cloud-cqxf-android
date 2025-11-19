@@ -1,5 +1,6 @@
 package com.mydemo.test31.activity;
 
+import android.content.pm.ActivityInfo;
 import android.os.Bundle;
 
 import androidx.appcompat.app.AppCompatActivity;
@@ -12,7 +13,7 @@ public class IncomingCallActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_incoming_call);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
     }
-
 
 }

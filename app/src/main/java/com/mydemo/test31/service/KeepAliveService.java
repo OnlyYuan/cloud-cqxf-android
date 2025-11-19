@@ -1,5 +1,6 @@
 package com.mydemo.test31.service;
 
+import android.Manifest;
 import android.app.KeyguardManager;
 import android.app.Notification;
 import android.app.NotificationChannel;
@@ -8,8 +9,11 @@ import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.location.LocationListener;
+import android.location.LocationManager;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -19,6 +23,7 @@ import android.text.TextUtils;
 import android.util.Log;
 import android.widget.RemoteViews;
 
+import androidx.core.app.ActivityCompat;
 import androidx.core.app.NotificationCompat;
 
 import com.google.android.gms.common.util.CollectionUtils;
@@ -26,7 +31,9 @@ import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingGroupContact;
 import com.mpttpnas.api.TrunkingLocalContact;
 import com.mpttpnas.pnaslibraryapi.PnasContactUtil;
+import com.mpttpnas.pnaslibraryapi.PnasGisUtil;
 import com.mpttpnas.pnaslibraryapi.callback.CallStateChangedCallbackEvent;
+import com.mpttpnas.pnaslibraryapi.callback.GisConfigChangedCallbackEvent;
 import com.mydemo.test31.MyApplication;
 import com.mydemo.test31.R;
 import com.mydemo.test31.activity.MainActivity;
@@ -80,6 +87,12 @@ public class KeepAliveService extends Service {
     private TrunkingCallSession callSession;
     private NotificationManager notificationManager;
 
+    private LocationManager locationManager;
+
+    private LocationListener locationListener;
+
+    private long lastGisTime;
+
     @Override
     public void onCreate() {
         super.onCreate();
@@ -93,13 +106,11 @@ public class KeepAliveService extends Service {
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.d(TAG, "onStartCommand: 服务命令执行");
-
         // 启动前台服务
-        // startForegroundService();
+        startForegroundService();
 
         // 处理Intent
         // handleIntent(intent);
-
         return START_STICKY;
     }
 
@@ -195,7 +206,7 @@ public class KeepAliveService extends Service {
     }
 
     /**
-     * EventBus事件处理 - 通话状态改变
+     * 呼叫状态变化回调
      */
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onCallStateChangedCallbackEvent(CallStateChangedCallbackEvent event) {
@@ -209,6 +220,57 @@ public class KeepAliveService extends Service {
     }
 
     /**
+     * 上报位置的设置参数（周期、距离）回调
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN)
+    public void onGisConfigChangedCallbackEvent(GisConfigChangedCallbackEvent event) {
+        Log.d(TAG, "onGisConfigChangedCallbackEvent() called with: event = [" + event + "]");
+        // 定位坐标系WGS-84
+        if (event.getSwtFlag() == 1) {
+            stopLocation();
+            startLocation(event);
+        } else {
+            stopLocation();
+        }
+    }
+
+    private void startLocation(GisConfigChangedCallbackEvent event) {
+        if (locationManager == null) {
+            locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
+            boolean gps = locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+            boolean network = locationManager.isProviderEnabled(LocationManager.NETWORK_PROVIDER);
+            Log.i(TAG, "gps:" + gps + ", network:" + network);
+            if (gps) {
+                if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED
+                        && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+                    Log.w(TAG, "gps permission fail");
+                    return;
+                }
+                locationListener = location -> {
+                    Log.d(TAG, "onLocationChanged() called with: location = [" + location + "]");
+                    if (System.currentTimeMillis() - lastGisTime >= (event.getTimeSec() * 1000)) {
+                        lastGisTime = System.currentTimeMillis();
+                        PnasGisUtil.getInstance().uploadGis(location.getLongitude(), location.getLatitude(), location.getAltitude(),
+                                (int) location.getBearing(), location.getSpeed(), false);
+                    }
+                };
+                locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, 1000, 0, locationListener);
+            }
+        }
+    }
+
+    private void stopLocation() {
+        if (locationManager != null) {
+            if (locationListener != null) {
+                locationManager.removeUpdates(locationListener);
+            }
+            locationListener = null;
+            locationManager = null;
+        }
+    }
+
+
+    /**
      * 处理通话状态变化
      */
     private void handleCallStateChange(CallStateChangedCallbackEvent event) {
@@ -219,7 +281,7 @@ public class KeepAliveService extends Service {
         boolean isScreenLocked = isScreenLocked();
         boolean isAppInBackground = MyApplication.isAppInBackground();
         Log.d(TAG, "handleCallStateChange: 屏幕锁定=" + isScreenLocked + ", 应用后台=" + isAppInBackground);
-        callSession = event.callSession;
+        callSession = event.getCallSession();
         if (!isAppInBackground && !isScreenLocked) {
             handleForegroundCall(event);
         } else {
@@ -243,7 +305,7 @@ public class KeepAliveService extends Service {
      */
     private void handleForegroundCall(CallStateChangedCallbackEvent event) {
         try {
-            ShowCallReminderDialogEvent dialogEvent = new ShowCallReminderDialogEvent(event.callId, event.callSession);
+            ShowCallReminderDialogEvent dialogEvent = new ShowCallReminderDialogEvent(event.getCallId(), event.getCallSession());
             EventBus.getDefault().post(dialogEvent);
             Log.d(TAG, "handleForegroundCall: 已发送前台通话对话框事件");
         } catch (Exception e) {

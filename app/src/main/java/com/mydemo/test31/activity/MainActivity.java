@@ -3,8 +3,10 @@ package com.mydemo.test31.activity;
 import static com.mydemo.test31.util.Util.h5Url;
 import static com.mydemo.test31.util.Util.pocUrl;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.ActivityInfo;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.Color;
@@ -12,8 +14,10 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
+import android.os.Handler;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
+import android.text.TextUtils;
 import android.util.Log;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -32,12 +36,16 @@ import android.widget.Toast;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
+import androidx.core.content.FileProvider;
 
 import com.mptt.media.modules.uvc.utils.ToastUtils;
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingConversation;
 import com.mpttpnas.api.TrunkingGroupContact;
 import com.mpttpnas.api.TrunkingMessage;
+import com.mpttpnas.api.TrunkingProfileState;
 import com.mpttpnas.pnas.agent.PnasErrorCode;
 import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 import com.mpttpnas.pnaslibraryapi.PnasConfigUtil;
@@ -46,9 +54,12 @@ import com.mpttpnas.pnaslibraryapi.PnasSDK;
 import com.mpttpnas.pnaslibraryapi.PnasUserUtil;
 import com.mpttpnas.pnaslibraryapi.callback.FloorStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GroupAffiliactionNotifyResultCallbackEvent;
+import com.mpttpnas.pnaslibraryapi.callback.RegistrationStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StackStartSuccessCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent;
+import com.mydemo.test31.MyApplication;
 import com.mydemo.test31.R;
+import com.mydemo.test31.data.User;
 import com.mydemo.test31.dialog.CallReminderDialog;
 import com.mydemo.test31.dialog.LinkWayDialog;
 import com.mydemo.test31.dialog.MemberListDialog;
@@ -60,22 +71,24 @@ import com.mydemo.test31.event.QRScannerEvent;
 import com.mydemo.test31.event.ShowCallReminderDialogEvent;
 import com.mydemo.test31.service.KeepAliveService;
 import com.mydemo.test31.util.AndroidVersionUtils;
+import com.mydemo.test31.util.DatabaseManager;
 import com.mydemo.test31.util.InvState;
-import com.mydemo.test31.util.MyProvider;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
 import org.greenrobot.eventbus.ThreadMode;
-import org.jivesoftware.smack.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+
+import cn.hutool.core.collection.CollUtil;
 
 public class MainActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
     private static final String TAG = "MainActivity";
@@ -155,12 +168,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     private Uri photoUri = null;
 
+    private DatabaseManager databaseManager;
+
 
     @Override
     @RequiresApi(api = Build.VERSION_CODES.O)
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate() called with: savedInstanceState = [" + savedInstanceState + "]");
         super.onCreate(savedInstanceState);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
         // 1. 设置沉浸式状态栏
         setupImmersiveStatusBar();
         // 初始化页面
@@ -170,13 +186,26 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         if (!EventBus.getDefault().isRegistered(this)) {
             EventBus.getDefault().register(this);
         }
-        // 启动保活服务
-        startKeepAliveService();
+        // 延迟启动保活服务，确保UI先初始化
+        new Handler().postDelayed(this::startKeepAliveService, 1500);
         // 2. 获取状态栏高度
         statusBarHeight = getStatusBarHeight();
         // 初始化视图
         initView();
 
+        // 获取 Application 中的数据库管理器
+        MyApplication app = (MyApplication) getApplication();
+        databaseManager = app.getDatabaseManager();
+        // 启动时登录
+        defaultLogin();
+    }
+
+
+    private void defaultLogin() {
+        List<User> users = databaseManager.getAllUsers();
+        if (CollUtil.isEmpty(users)) {
+            return;
+        }
     }
 
 
@@ -307,17 +336,31 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
 
     // 生成保存照片的临时文件
+    //  private File createImageFile() throws IOException {
+    //      // 用时间戳作为文件名，确保唯一
+    //      String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
+    //      String imageFileName = "JPEG_" + timeStamp + "_";
+    //      // 保存到应用私有目录下的Pictures文件夹（无需存储权限）
+    //      File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
+    //      // 创建临时文件
+    //      File imageFile = File.createTempFile(imageFileName, ".jpg", storageDir);
+    //      // 记录文件路径
+    //      cameraImagePath = imageFile.getAbsolutePath();
+    //      return imageFile;
+    //  }
+
     private File createImageFile() throws IOException {
-        // 用时间戳作为文件名，确保唯一
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss", Locale.getDefault()).format(new Date());
         String imageFileName = "JPEG_" + timeStamp + "_";
-        // 保存到应用私有目录下的Pictures文件夹（无需存储权限）
         File storageDir = getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-        // 创建临时文件
-        File imageFile = File.createTempFile(imageFileName, ".jpg", storageDir);
-        // 记录文件路径
-        cameraImagePath = imageFile.getAbsolutePath();
-        return imageFile;
+        if (storageDir != null && !storageDir.exists()) {
+            storageDir.mkdirs();
+        }
+        return File.createTempFile(
+                imageFileName,
+                ".jpg",
+                storageDir
+        );
     }
 
 
@@ -327,9 +370,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private void showSelectPicDialog() {
         SelectPicDialog selectPicDialog = new SelectPicDialog();
         selectPicDialog.setLinkListener(type -> {
-            if (type == 0) {//相机
+            // 相机
+            if (type == 0) {
                 goCameraFun();
-            } else if (type == 1) {//相册
+            } else if (type == 1) {
+                // 相册
                 goAlbum();
             } else {
                 Uri[] results = null;
@@ -344,38 +389,144 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         selectPicDialog.show(getSupportFragmentManager(), "albumDialog");
     }
 
+    private static final int REQUEST_CAMERA_PERMISSION = 100;
 
     /**
-     * 打开相机
+     * 打开相机（包含权限检查）
      */
     private void goCameraFun() {
-        // 创建启动相机的Intent
-        Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        // 检查相机权限
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
+                != PackageManager.PERMISSION_GRANTED) {
+            // 请求相机权限
+            ActivityCompat.requestPermissions(this,
+                    new String[]{Manifest.permission.CAMERA},
+                    REQUEST_CAMERA_PERMISSION);
+            return;
+        }
+        // 已有权限，直接启动相机
+        startCamera();
+    }
 
-        // 检查是否有相机应用可处理
-        if (takePictureIntent.resolveActivity(getPackageManager()) != null) {
-            // 创建保存照片的文件
-            File photoFile = null;
-            try {
-                photoFile = createImageFile(); // 生成临时文件
-            } catch (IOException e) {
-                e.printStackTrace();
+    /**
+     * 启动相机的具体实现
+     */
+    private void startCamera() {
+        try {
+            Intent takePictureIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+
+            // 鸿蒙系统兼容性检测
+            if (!isCameraAvailable(takePictureIntent)) {
+                Toast.makeText(this, "没有找到相机应用", Toast.LENGTH_SHORT).show();
+                notifyH5Callback(null);
                 return;
             }
 
-            if (photoFile != null) {
-                // 通过FileProvider生成content://格式的Uri（避免FileUriExposedException）
-                photoUri = MyProvider.getUriForFile(
-                        MainActivity.this,
-                        "com.mydemo.test31.fileprovider", // 与Manifest中一致
-                        photoFile
-                );
-
-                // 告诉相机将照片保存到该Uri
-                takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-                // 启动相机，等待结果返回
-                startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+            // 创建保存照片的文件
+            File photoFile = createImageFile();
+            if (Objects.isNull(photoFile)) {
+                Toast.makeText(this, "创建文件失败", Toast.LENGTH_SHORT).show();
+                notifyH5Callback(null);
+                return;
             }
+
+            // 通过FileProvider生成Uri
+            photoUri = FileProvider.getUriForFile(
+                    MainActivity.this,
+                    "com.mydemo.test31.fileprovider",
+                    photoFile
+            );
+
+            Log.d(TAG, "相机文件URI: " + photoUri.toString());
+
+            // 授予临时权限并启动相机
+            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
+                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
+
+            startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
+        } catch (Exception e) {
+            e.printStackTrace();
+            Toast.makeText(this, "启动相机失败: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            notifyH5Callback(null);
+        }
+    }
+
+    /**
+     * 兼容鸿蒙系统的相机可用性检测
+     */
+    private boolean isCameraAvailable(Intent intent) {
+        // 如果是鸿蒙系统，直接返回true（鸿蒙系统一定有相机）
+        if (isHarmonyOS()) {
+            return true;
+        }
+
+        // 其他Android系统使用传统检测方法
+        return intent.resolveActivity(getPackageManager()) != null;
+    }
+
+    /**
+     * 鸿蒙官方推荐的检测方法
+     */
+    private boolean isHarmonyOS() {
+        try {
+            // 方法1：检测鸿蒙特有的系统属性
+            Class<?> systemPropertiesClass = Class.forName("android.os.SystemProperties");
+            Method getMethod = systemPropertiesClass.getMethod("get", String.class, String.class);
+            // 鸿蒙特有的系统属性
+            String harmonyVersion = (String) getMethod.invoke(null, "hw_sc.build.platform.version", "");
+            String buildType = (String) getMethod.invoke(null, "ro.build.type", "");
+            String productModel = (String) getMethod.invoke(null, "ro.product.model", "");
+            // 如果存在鸿蒙平台版本，则是鸿蒙系统
+            if (!TextUtils.isEmpty(harmonyVersion)) {
+                return true;
+            }
+            // 鸿蒙系统的构建类型通常是 "user" 或 "userdebug"，但会有特殊标识
+            if ("user".equals(buildType) || "userdebug".equals(buildType)) {
+                // 进一步检查其他特征
+                String buildTags = Build.TAGS;
+                if (buildTags != null && buildTags.contains("harmony")) {
+                    return true;
+                }
+            }
+        } catch (Exception e) {
+            // 忽略异常，继续其他检测方法
+            e.printStackTrace();
+        }
+        return checkHarmonyByReflection();
+    }
+
+    /**
+     * 通过反射检测鸿蒙特有类
+     */
+    private boolean checkHarmonyByReflection() {
+        String[] harmonyClasses = {
+                "ohos.system.version.SystemVersion",           // 鸿蒙系统版本类
+                "ohos.aafwk.ability.Ability",                  // 鸿蒙Ability框架
+                "ohos.app.Context",                            // 鸿蒙上下文
+                "ohos.global.configuration.Configuration",     // 鸿蒙配置类
+                "ohos.bundle.Bundle",                          // 鸿蒙Bundle
+                "com.huawei.ohos.global.systemres.SystemRes"   // 鸿蒙系统资源
+        };
+
+        for (String className : harmonyClasses) {
+            try {
+                Class.forName(className);
+                return true; // 如果能找到任何一个鸿蒙特有类，就是鸿蒙系统
+            } catch (ClassNotFoundException e) {
+                // 继续检查下一个类
+            }
+        }
+        return false;
+    }
+
+    /**
+     * 统一通知H5回调的方法
+     */
+    private void notifyH5Callback(Uri[] results) {
+        if (filePathCallback != null) {
+            filePathCallback.onReceiveValue(results);
+            filePathCallback = null;
         }
     }
 
@@ -434,6 +585,22 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         boolean allPermissionGrant = true;
+        // 处理相机权限请求
+        if (requestCode == REQUEST_CAMERA_PERMISSION) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                // 权限被授予，重新启动相机
+                startCamera();
+            } else {
+                Toast.makeText(this, "需要相机权限才能拍照", Toast.LENGTH_SHORT).show();
+                // 通知H5用户取消了操作
+                if (filePathCallback != null) {
+                    filePathCallback.onReceiveValue(null);
+                    filePathCallback = null;
+                }
+            }
+            // 这里返回，避免与其他权限处理冲突
+            return;
+        }
         if (requestCode != 1000) {
             return;
         }
@@ -484,48 +651,48 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
         Log.i(TAG, "===>相机拍照的图片$cameraImagePath2222");
 
-        //相册
+        // 处理相册选择结果
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
             Uri[] results = null;
-
-            // 处理返回结果（用户选择了图片或拍照成功）
-            if (resultCode == Activity.RESULT_OK) {
-                if (data != null) {
-                    // 相册选择的图片（有数据返回）
-                    Uri uri = data.getData();
-                    ToastUtils.showMessage(MainActivity.this, "相册数据" + data.getData());
-                    if (uri != null) {
-                        results = new Uri[]{uri};
-                    }
+            if (resultCode == Activity.RESULT_OK && data != null) {
+                Uri uri = data.getData();
+                ToastUtils.showMessage(MainActivity.this, "相册数据" + data.getData());
+                if (uri != null) {
+                    results = new Uri[]{uri};
                 }
             }
 
             // 将结果返回给H5
             if (filePathCallback != null) {
                 filePathCallback.onReceiveValue(results);
-                filePathCallback = null; // 重置回调，避免内存泄漏
+                filePathCallback = null;
             }
         }
 
-        //相机
+        // 处理相机拍照结果 - 修复这里的逻辑
         if (requestCode == REQUEST_TAKE_PHOTO) {
-
-
-            // 相机拍照的图片（无data返回，用临时路径）
-
             Uri[] results = null;
             if (resultCode == Activity.RESULT_OK) {
-                if (cameraImagePath != null) {
-                    results = new Uri[]{photoUri}; // cameraImagePath 为拍照临时路径
+                // 拍照成功，使用 photoUri
+                if (photoUri != null) {
+                    results = new Uri[]{photoUri};
+                    // ToastUtils.showMessage(MainActivity.this, "相机拍照成功: " + photoUri.toString());
+                } else {
+                    // ToastUtils.showMessage(MainActivity.this, "拍照成功但未获取到图片URI");
                 }
+            } else {
+                // 用户取消了拍照
+                // ToastUtils.showMessage(MainActivity.this, "用户取消了拍照");
             }
 
-            ToastUtils.showMessage(MainActivity.this, "1111相机拍照的图片" + photoUri);
             // 将结果返回给H5
             if (filePathCallback != null) {
                 filePathCallback.onReceiveValue(results);
-                filePathCallback = null; // 重置回调，避免内存泄漏
+                filePathCallback = null;
             }
+
+            // 重置 photoUri，避免重复使用
+            photoUri = null;
         }
     }
 
@@ -537,11 +704,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // DMS
         PnasConfigUtil.getInstance().setUseDMSConfig(true);
         // 呼叫记录保存在message
-        PnasConfigUtil.getInstance().setSaveCallLogInMessage(true);
+        PnasConfigUtil.getInstance().setSaveCallLogInMessage(false);
         // 组呼录音保存在message
-        PnasConfigUtil.getInstance().setCallSoundRecordIntoMessage(true);
+        PnasConfigUtil.getInstance().setCallSoundRecordIntoMessage(false);
+        // 组呼录音
+        PnasConfigUtil.getInstance().setGroupVoiceRecord(true);
         // 日志
         PnasConfigUtil.getInstance().setLogLevel(6);
+        // 日志上报
+        PnasConfigUtil.getInstance().setLogUploadSwitch(true);
         PnasGisUtil.getInstance().init();
         // 初始化SDK
         PnasSDK.getInstance().init(this);
@@ -560,6 +731,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             isInitPnasUserUtilSuccess = false;
             finish();
         }
+    }
+
+    /**
+     * 用户注册状态回调
+     */
+    @Subscribe(threadMode = ThreadMode.MAIN, priority = 255)
+    public void onRegistrationStateChangedCallbackEvent(RegistrationStateChangedCallbackEvent event) {
+        TrunkingProfileState profileState = event.getProfileState();
     }
 
     /**
@@ -591,10 +770,13 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     /**
      * 启动保活服务
      */
-    @RequiresApi(api = Build.VERSION_CODES.O)
     private void startKeepAliveService() {
-        Intent intent = new Intent(this, KeepAliveService.class);
-        startForegroundService(intent);
+        Intent serviceIntent = new Intent(this, KeepAliveService.class);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(serviceIntent);
+        } else {
+            startService(serviceIntent);
+        }
     }
 
     private TrunkingCallSession callSession;
@@ -810,7 +992,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         public void relogin() {
             Toast.makeText(MainActivity.this, "重新登录：用户名："
                     + useName + "密码： " + passWord, Toast.LENGTH_SHORT).show();
-            if (!StringUtils.isNullOrEmpty(useName)) {
+            if (!Objects.isNull(useName)) {
                 isH5Login = true;
                 PnasUserUtil instance = PnasUserUtil.getInstance();
                 if (!instance.isLogin()) {

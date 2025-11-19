@@ -2,6 +2,7 @@ package com.mydemo.test31.activity;
 
 import android.animation.ObjectAnimator;
 import android.content.Context;
+import android.content.pm.ActivityInfo;
 import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.Camera;
@@ -59,6 +60,7 @@ public class CameraQRScannerActivity extends AppCompatActivity
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_camera_qr);
+        setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
 
         initViews();
         initScanner();
@@ -105,8 +107,8 @@ public class CameraQRScannerActivity extends AppCompatActivity
         ObjectAnimator animator = ObjectAnimator.ofFloat(
                 scanLine,
                 "translationY",
-                -scanFrame.getHeight() / 2,
-                scanFrame.getHeight() / 2
+                -scanFrame.getHeight() / 2F,
+                scanFrame.getHeight() / 2F
         );
         animator.setDuration(1800);
         animator.setRepeatCount(ObjectAnimator.INFINITE);

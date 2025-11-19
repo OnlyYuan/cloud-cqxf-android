@@ -14,6 +14,7 @@ import com.amap.api.location.AMapLocationListener;
 import com.amap.api.location.AMapLocationQualityReport;
 import com.mpttpnas.pnaslibraryapi.PnasApplicationUtil;
 import com.mpttpnas.pnaslibraryapi.PnasGisUtil;
+import com.mydemo.test31.util.DatabaseManager;
 import com.mydemo.test31.util.Utils;
 
 public class MyApplication extends Application implements Application.ActivityLifecycleCallbacks {
@@ -26,7 +27,10 @@ public class MyApplication extends Application implements Application.ActivityLi
     private AMapLocationClient locationClient = null;
     private AMapLocationClientOption locationOption = null;
 
-    private static MyApplication instance;
+    private MyApplication instance;
+
+    private DatabaseManager databaseManager;
+
 
     @Override
     public void onCreate() {
@@ -36,6 +40,9 @@ public class MyApplication extends Application implements Application.ActivityLi
         PnasApplicationUtil.getInstance().initApplication(this);
         registerActivityLifecycleCallbacks(this);
         try {
+            // 必须在调用任何SDK接口前执行
+            AMapLocationClient.updatePrivacyShow(getApplicationContext(), true, true);
+            AMapLocationClient.updatePrivacyAgree(getApplicationContext(), true);
             // 初始化定位
             locationClient = new AMapLocationClient(getApplicationContext());
             // 设置定位回调监听
@@ -49,12 +56,22 @@ public class MyApplication extends Application implements Application.ActivityLi
                 locationClient.stopLocation();
                 locationClient.startLocation();
             }
+
+            // 初始化数据库管理器
+            databaseManager = new DatabaseManager(this);
+            databaseManager.open();
         } catch (Exception e) {
             Log.e(TAG, "onCreate() called", e);
         }
     }
 
-    public static MyApplication getInstance() {
+
+    public DatabaseManager getDatabaseManager() {
+        return databaseManager;
+    }
+
+
+    public MyApplication getInstance() {
         return instance;
     }
 
@@ -232,5 +249,13 @@ public class MyApplication extends Application implements Application.ActivityLi
 
     public static boolean isAppInBackground() {
         return isInBackground;
+    }
+
+    @Override
+    public void onTerminate() {
+        super.onTerminate();
+        if (databaseManager != null) {
+            databaseManager.close();
+        }
     }
 }

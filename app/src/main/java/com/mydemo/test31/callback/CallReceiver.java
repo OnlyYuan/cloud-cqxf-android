@@ -38,7 +38,7 @@ public class CallReceiver extends BroadcastReceiver {
             return;
         }
 
-        Log.d(TAG, "onReceive: action=" + action + ", callId=" + callSession.callId);
+        Log.d(TAG, "onReceive: action=" + action + ", callId=" + callSession.getCallId());
 
         try {
             if (ACTION_ANSWER_CALL.equals(action)) {
@@ -56,7 +56,7 @@ public class CallReceiver extends BroadcastReceiver {
     }
 
     private void answerCall(Context context, TrunkingCallSession callSession) {
-        Log.i(TAG, "Answering call: " + callSession.callId);
+        Log.i(TAG, "Answering call: " + callSession.getCallId());
 
         try {
             Intent intent = new Intent(context, MessageUiActivity.class);
@@ -75,7 +75,7 @@ public class CallReceiver extends BroadcastReceiver {
     }
 
     private void rejectCall(Context context, TrunkingCallSession callSession) {
-        Log.i(TAG, "Rejecting call: " + callSession.callId);
+        Log.i(TAG, "Rejecting call: " + callSession.getCallId());
         try {
             PnasCallUtil.getInstance().hangupActiveCall();
         } catch (Exception e) {

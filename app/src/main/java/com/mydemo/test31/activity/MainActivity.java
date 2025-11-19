@@ -89,6 +89,7 @@ import java.util.Locale;
 import java.util.Objects;
 
 import cn.hutool.core.collection.CollUtil;
+import cn.hutool.core.util.StrUtil;
 
 public class MainActivity extends AppCompatActivity implements View.OnTouchListener, View.OnClickListener {
     private static final String TAG = "MainActivity";
@@ -170,6 +171,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
     private DatabaseManager databaseManager;
 
+    private boolean isPageLoading = false;
+    private long lastLoadTime = 0;
+    private static final long LOAD_INTERVAL = 500; // 500ms 间隔
+
 
     @Override
     @RequiresApi(api = Build.VERSION_CODES.O)
@@ -196,16 +201,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // 获取 Application 中的数据库管理器
         MyApplication app = (MyApplication) getApplication();
         databaseManager = app.getDatabaseManager();
-        // 启动时登录
-        defaultLogin();
-    }
-
-
-    private void defaultLogin() {
-        List<User> users = databaseManager.getAllUsers();
-        if (CollUtil.isEmpty(users)) {
-            return;
-        }
     }
 
 
@@ -285,14 +280,56 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         webView.setWebViewClient(new WebViewClient() {
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
+                isPageLoading = true;
                 // 预先注入配置
                 injectPreConfig();
             }
 
+            /**
+             * 页面加载完成后执行
+             */
             @Override
             public void onPageFinished(WebView view, String url) {
+                long currentTime = System.currentTimeMillis();
+                // 防抖处理：短时间内只执行一次
+                if (currentTime - lastLoadTime < LOAD_INTERVAL) {
+                    return;
+                }
+                lastLoadTime = currentTime;
+                // 确保是主页面加载完成，不是子框架
+                if (!isPageLoading || !url.equals(webView.getUrl())) {
+                    return;
+                }
+                isPageLoading = false;
+                executePageFinishLogic(url);
+            }
+
+            private void executePageFinishLogic(String url) {
+                Log.d("PageLoad", "最终页面加载完成: " + url);
+
                 // 页面完成后再次确认配置
                 injectFinalConfig();
+
+                // 启动时登录
+                List<User> users = databaseManager.getAllUsers();
+                if (CollUtil.isEmpty(users)) {
+                    return;
+                }
+
+                if (Objects.equals(isH5Login, false)) {
+                    User user = users.get(0);
+                    useName = user.getPocUserName();
+                    passWord = user.getPocPassword();
+                    startLogin();
+
+                    runOnUiThread(() -> {
+                        webView.evaluateJavascript("javascript:login(" + user.getName() + ","
+                                + user.getPassword() + ")", result -> {
+                            // 可选处理返回值
+                            isH5Login = true;
+                        });
+                    });
+                }
             }
 
             @Override
@@ -752,10 +789,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             // Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
             PnasGisUtil.getInstance().login();
-        } else {
-            PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456", "113.204.49.3:8062", null);
-            PnasGisUtil.getInstance().login();
         }
+        // PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456", "113.204.49.3:8062", null);
+        // PnasGisUtil.getInstance().login();
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -983,6 +1019,34 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             passWord = password;
             isH5Login = true;
             startLogin();
+            List<User> users = databaseManager.getAllUsers();
+            if (CollUtil.isEmpty(users)) {
+                if (StrUtil.isNotBlank(user) && StrUtil.isNotBlank(password)) {
+                    User dbUser = new User(user, password, user, password);
+                    databaseManager.addUser(dbUser);
+                }
+            } else {
+                User dbUser = users.get(0);
+                dbUser.setPocUserName(user);
+                dbUser.setPocPassword(password);
+                databaseManager.updateUser(dbUser);
+            }
+        }
+
+
+        /**
+         * 登录poc
+         */
+        @JavascriptInterface
+        public void loginPoc(String userName, String password,
+                             String pocUserUser, String pocPasswd) {
+            useName = userName;
+            passWord = password;
+            isH5Login = true;
+            databaseManager.resetTable();
+            User user = new User(userName, password, pocUserUser, pocPasswd);
+            databaseManager.addUser(user);
+            startLogin();
         }
 
         /**
@@ -1067,6 +1131,21 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             Intent intent = new Intent(MainActivity.this, CameraQRScannerActivity.class);
             startActivity(intent);
             return cameraResult;
+        }
+
+        /**
+         * 默认登录
+         */
+        @JavascriptInterface
+        public void defaultLogin() {
+            runOnUiThread(() -> {
+                // 调用 JS 中的 showMessage 方法，并传递参数
+                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')",
+                        result -> {
+                            // JS 方法的返回值（可选处理）
+                            Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
+                        });
+            });
         }
     }
 

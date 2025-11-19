@@ -388,7 +388,7 @@ public class KeepAliveService extends Service {
      */
     private Notification createKeepAliveNotification() {
         try {
-            Intent notificationIntent = new Intent(this, MainActivity.class);
+            Intent notificationIntent = new Intent(this, MessageUiService.class);
             PendingIntent pendingIntent = PendingIntent.getActivity(this,
                     0, notificationIntent, PendingIntent.FLAG_IMMUTABLE);
             return new NotificationCompat.Builder(this, CHANNEL_ID_KEEP_ALIVE)
@@ -583,7 +583,7 @@ public class KeepAliveService extends Service {
      */
     private PendingIntent createMainPendingIntent(String callerName, String callerNumber) {
         try {
-            Intent mainIntent = new Intent(this, MainActivity.class);
+            Intent mainIntent = new Intent(this, MessageUiService.class);
             mainIntent.putExtra(EXTRA_CALLER_NAME, callerName);
             mainIntent.putExtra(EXTRA_CALLER_NUMBER, callerNumber);
             mainIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);

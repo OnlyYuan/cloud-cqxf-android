@@ -80,4 +80,17 @@ public class DatabaseManager {
         values.put(DatabaseHelper.COLUMN_PASSWORD, user.getPassword());
         return database.insert(DatabaseHelper.TABLE_USERS, null, values);
     }
+
+
+    public void updateUser(User user) {
+        ContentValues values = new ContentValues();
+        values.put(DatabaseHelper.COLUMN_POC_USERNAME, user.getPocUserName());
+        values.put(DatabaseHelper.COLUMN_POC_PASSWORD, user.getPocPassword());
+        database.update(DatabaseHelper.TABLE_USERS, values,DatabaseHelper.COLUMN_ID + " = ?",
+                new String[]{String.valueOf(user.getId())});
+    }
+
+    public int resetTable() {
+        return database.delete(DatabaseHelper.TABLE_USERS, null, null);
+    }
 }

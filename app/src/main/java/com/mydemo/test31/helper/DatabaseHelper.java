@@ -14,6 +14,10 @@ public class DatabaseHelper extends SQLiteOpenHelper {
     public static final String COLUMN_NAME = "name";
     public static final String COLUMN_PASSWORD = "password";
 
+    public static final String COLUMN_POC_USERNAME = "pocUserName";
+
+    public static final String COLUMN_POC_PASSWORD = "pocPassword";
+
     // 创建表的 SQL 语句
     private static final String CREATE_TABLE_USERS =
             "CREATE TABLE " + TABLE_USERS + " (" +

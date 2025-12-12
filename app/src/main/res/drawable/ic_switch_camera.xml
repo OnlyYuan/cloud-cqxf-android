@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+
+    <!-- 旋转箭头 -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M17.5,12c0,3-2.5,5.5-5.5,5.5S6.5,15,6.5,12S9,6.5,12,6.5
+          c1.24,0,2.36,0.5,3.17,1.33L12,11h7V4l-2.47,2.47C14.87,4.27,13.5,3.5,12,3.5
+          c-4.69,0-8.5,3.81-8.5,8.5s3.81,8.5,8.5,8.5s8.5-3.81,8.5-8.5H17.5z"/>
+</vector>

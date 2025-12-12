@@ -4,4 +4,6 @@
     <string name="keep_alive_title">保活服务运行中</string>
     <string name="keep_alive_content">应用正在后台运行</string>
     <string name="incoming_call_title">来电提醒</string>
+    <string name="face_capture">人脸识别身份验证</string>
+    <string name="capture_button_str">刷脸验证</string>
 </resources>

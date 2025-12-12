@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- 白色半透明遮罩 -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#CCFFFFFF" />
+        </shape>
+    </item>
+
+    <!-- 圆形挖空区域（显示相机） -->
+    <item>
+        <shape android:shape="oval">
+            <solid android:color="@android:color/transparent" />
+            <size
+                android:width="300dp"
+                android:height="300dp" />
+        </shape>
+    </item>
+
+</layer-list>

@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/mainLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FFFFFF"
+    android:keepScreenOn="true"
+    android:orientation="vertical">
+
+    <!-- 顶部标题区域 -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp">
+
+        <ImageView
+            android:id="@+id/close_btn"
+            android:layout_width="60dp"
+            android:layout_height="40dp"
+            android:layout_marginLeft="0dp"
+            android:layout_marginTop="0dp"
+            android:clickable="true"
+            android:focusable="true"
+            android:padding="20dp"
+            android:scaleType="centerCrop"
+            android:src="@mipmap/return_left" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="40dp"
+            android:text="人脸识别"
+            android:textColor="#333333"
+            android:textSize="22sp"
+            android:textStyle="bold" />
+
+        <TextView
+            android:id="@+id/titleTextView"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerHorizontal="true"
+            android:layout_marginTop="80dp"
+            android:text="请保证光线充足，面容整洁的情况下进行人脸识别"
+            android:textColor="#666666"
+            android:textSize="12sp" />
+
+    </RelativeLayout>
+
+    <!-- 中间相机区域 -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:gravity="center">
+
+        <!-- 全屏相机预览 -->
+        <SurfaceView
+            android:id="@+id/surfaceView"
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_centerInParent="true" />
+
+        <!-- 白色遮罩层（中间挖空圆形） -->
+        <com.mydemo.test31.view.WhiteCircleMaskView
+            android:id="@+id/maskView"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+        <!-- 圆形边框（引导框） -->
+        <View
+            android:id="@+id/faceOverlay"
+            android:layout_width="280dp"
+            android:layout_height="280dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/face_overlay_circle" />
+
+        <!-- 倒计时文本 -->
+        <TextView
+            android:id="@+id/countdownTextView"
+            android:layout_width="120dp"
+            android:layout_height="120dp"
+            android:layout_centerInParent="true"
+            android:background="@drawable/countdown_bg"
+            android:gravity="center"
+            android:textColor="#FFFFFF"
+            android:textSize="72sp"
+            android:visibility="gone" />
+
+    </RelativeLayout>
+
+    <!-- 底部引导和按钮区域 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:paddingHorizontal="40dp"
+        android:paddingBottom="40dp">
+
+        <!-- 阅读并同意单选框（新增部分） -->
+        <!--        <LinearLayout-->
+        <!--            android:layout_width="match_parent"-->
+        <!--            android:layout_height="wrap_content"-->
+        <!--            android:layout_marginBottom="15dp"-->
+        <!--            android:gravity="center"-->
+        <!--            android:orientation="horizontal">-->
+
+        <!--            <RadioButton-->
+        <!--                android:id="@+id/agreeRadioButton"-->
+        <!--                android:layout_width="wrap_content"-->
+        <!--                android:layout_height="wrap_content"-->
+        <!--                android:buttonTint="#333333"-->
+        <!--                android:text="阅读并同意"-->
+        <!--                android:textColor="#333333" />-->
+
+        <!--            <TextView-->
+        <!--                android:id="@+id/tvAgreement"-->
+        <!--                android:layout_width="wrap_content"-->
+        <!--                android:layout_height="wrap_content"-->
+        <!--                android:text="《人脸识别服务协议》"-->
+        <!--                android:textColor="#2196F3"-->
+        <!--                android:textSize="14sp" />-->
+        <!--        </LinearLayout>-->
+
+        <!-- 拍照按钮（原有代码保持不变） -->
+        <Button
+            android:id="@+id/captureButton"
+            android:layout_width="match_parent"
+            android:layout_height="52dp"
+            android:layout_marginTop="30dp"
+            android:background="#9C058CE0"
+            android:gravity="center"
+            android:text="刷脸验证"
+            android:textColor="@color/white"
+            android:textSize="16sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+</LinearLayout>

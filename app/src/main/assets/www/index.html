@@ -7,11 +7,16 @@
 </head>
 <body>
 <button onclick="qRScanner()">扫码</button>
+<button onclick="startFaceCapture()">人脸识别</button>
 </body>
 <script>
     function qRScanner(){
         console.log(123123)
         alert(AndroidNative.showQRScanner());
+    }
+
+    function startFaceCapture(){
+        alert(AndroidNative.startFaceCapture(null));
     }
 </script>
 </html>

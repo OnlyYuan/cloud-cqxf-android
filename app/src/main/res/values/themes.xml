@@ -14,6 +14,8 @@
         <!-- Customize your theme here. -->
         <item name="android:windowLightStatusBar">true</item>
         <item name="android:windowTranslucentStatus">true</item>
+        <!-- 启动背景颜色 -->
+        <item name="android:windowBackground">@drawable/launch_background</item>
     </style>
 
     <style name="BottomSheetAnimation">

@@ -36,7 +36,6 @@ import com.mpttpnas.pnaslibraryapi.callback.CallStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GisConfigChangedCallbackEvent;
 import com.mydemo.test31.MyApplication;
 import com.mydemo.test31.R;
-import com.mydemo.test31.activity.MainActivity;
 import com.mydemo.test31.callback.CallReceiver;
 import com.mydemo.test31.event.ShowCallReminderDialogEvent;
 import com.mydemo.test31.util.InvState;
@@ -63,19 +62,11 @@ public class KeepAliveService extends Service {
     private static final int NOTIFICATION_ID_KEEP_ALIVE = 1;
     public static final int NOTIFICATION_ID_CALL = 1002;
 
-    // 请求码
-    private static final int REQUEST_CODE_ANSWER = 100;
-    private static final int REQUEST_CODE_REJECT = 101;
-    private static final int REQUEST_CODE_MAIN = 102;
-
     // 时间常量
     private static final long WAKE_LOCK_TIMEOUT = 10 * 60 * 1000L; // 10分钟
     private static final long NOTIFICATION_TIMEOUT_MS = 30000; // 30秒
     private static final long[] VIBRATION_PATTERN = {0, 500, 200, 500};
 
-    // Intent Actions
-    public static final String ACTION_ANSWER_CALL = "com.mydemo.test31.ACTION_ANSWER_CALL";
-    public static final String ACTION_REJECT_CALL = "com.mydemo.test31.ACTION_REJECT_CALL";
     private static final String ACTION_SHOW_CALL_NOTIFICATION = "SHOW_CALL_NOTIFICATION";
 
     // Extra keys
@@ -108,7 +99,6 @@ public class KeepAliveService extends Service {
         Log.d(TAG, "onStartCommand: 服务命令执行");
         // 启动前台服务
         startForegroundService();
-
         // 处理Intent
         // handleIntent(intent);
         return START_STICKY;

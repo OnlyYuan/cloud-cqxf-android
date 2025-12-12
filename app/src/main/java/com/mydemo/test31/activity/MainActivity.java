@@ -1,9 +1,9 @@
 package com.mydemo.test31.activity;
 
-import static com.mydemo.test31.util.Util.h5Url;
 import static com.mydemo.test31.util.Util.pocUrl;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -15,6 +15,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
+import android.os.Looper;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
@@ -25,6 +26,7 @@ import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.webkit.JavascriptInterface;
+import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
@@ -40,6 +42,8 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.FileProvider;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import com.mptt.media.modules.uvc.utils.ToastUtils;
 import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.api.TrunkingConversation;
@@ -73,6 +77,7 @@ import com.mydemo.test31.service.KeepAliveService;
 import com.mydemo.test31.util.AndroidVersionUtils;
 import com.mydemo.test31.util.DatabaseManager;
 import com.mydemo.test31.util.InvState;
+import com.mydemo.test31.util.Util;
 
 import org.greenrobot.eventbus.EventBus;
 import org.greenrobot.eventbus.Subscribe;
@@ -84,8 +89,10 @@ import java.lang.reflect.Method;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Objects;
 
 import cn.hutool.core.collection.CollUtil;
@@ -158,6 +165,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private ValueCallback<Uri[]> filePathCallback;
     private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
     private static final int REQUEST_TAKE_PHOTO = 1002;
+
+    /**
+     * 人脸识别权限
+     */
+    private static final int FACE_CAPTURE_REQUEST = 101;
     // 保存相机拍照的临时图片路径
     private String cameraImagePath;
     private int statusBarHeight;
@@ -175,8 +187,11 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private long lastLoadTime = 0;
     private static final long LOAD_INTERVAL = 500; // 500ms 间隔
 
+    private final Gson gson = new GsonBuilder().create();
+
 
     @Override
+    @SuppressLint("SetJavaScriptEnabled")
     @RequiresApi(api = Build.VERSION_CODES.O)
     protected void onCreate(Bundle savedInstanceState) {
         Log.d(TAG, "onCreate() called with: savedInstanceState = [" + savedInstanceState + "]");
@@ -232,12 +247,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     private void initView() {
         webView = findViewById(R.id.webView);
         initWebViewSettings();
-        webView.loadUrl(h5Url);
-//        if (BuildConfig.DEBUG) {
-//            webView.loadUrl(debugH5Url);
-//        } else {
-//            webView.loadUrl(h5Url);
-//        }
+        webView.loadUrl(Util.h5Url);
         // 加载本地文件
         // webView.loadUrl("file:///android_asset/www/index.html");
     }
@@ -249,35 +259,56 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         WebSettings webSettings = webView.getSettings();
         // 启用 JavaScript
         webSettings.setJavaScriptEnabled(true);
-        // 允许 JS 弹窗
-        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-        // 支持缩放
-        webSettings.setSupportZoom(true);
-        webSettings.setBuiltInZoomControls(true);
-        //设置cookie缓存
+        // 设置cookie缓存
         webSettings.setDomStorageEnabled(true);
-        // webSettings.setAppCacheEnabled(true);
-        webSettings.setSaveFormData(true);
-        webSettings.setSavePassword(true);
+        webSettings.setDatabaseEnabled(true);
+        webSettings.setAppCacheEnabled(true);
+        webSettings.setAppCachePath(getCacheDir().getPath());
+        // 设置缓存策略
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
 
-        //新加的
+        // 支持文件访问
+        webSettings.setAllowFileAccess(true);
         webSettings.setAllowFileAccessFromFileURLs(true);
         webSettings.setAllowUniversalAccessFromFileURLs(true);
 
-        webSettings.setAllowFileAccess(true);
+        // 允许 JS 弹窗
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        // 缩放设置
+        webSettings.setSupportZoom(false);
+        webSettings.setBuiltInZoomControls(false);
+        webSettings.setDisplayZoomControls(false);
+        webSettings.setSaveFormData(true);
+        webSettings.setSavePassword(true);
+
         webSettings.setAllowContentAccess(true);
 
         // 3. 允许自动播放媒体（可选，避免H5调用摄像头后需要手动触发）
         webSettings.setMediaPlaybackRequiresUserGesture(false);
 
+        // 视口设置
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+
         // 允许混合内容（http 和 https 混合加载）
         if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
             webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+
+        // 硬件加速（API 11+）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
         }
         // 关键：不设置任何padding，完全交给H5控制
         webView.setPadding(0, 0, 0, 0);
         webView.setFitsSystemWindows(false);
         webView.setWebViewClient(new WebViewClient() {
+
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+                return false; // 所有链接都在WebView内打开
+            }
+
             @Override
             public void onPageStarted(WebView view, String url, Bitmap favicon) {
                 isPageLoading = true;
@@ -290,6 +321,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
              */
             @Override
             public void onPageFinished(WebView view, String url) {
+                super.onPageFinished(view, url);
                 long currentTime = System.currentTimeMillis();
                 // 防抖处理：短时间内只执行一次
                 if (currentTime - lastLoadTime < LOAD_INTERVAL) {
@@ -309,27 +341,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
                 // 页面完成后再次确认配置
                 injectFinalConfig();
-
-                // 启动时登录
-                List<User> users = databaseManager.getAllUsers();
-                if (CollUtil.isEmpty(users)) {
-                    return;
-                }
-
-                if (Objects.equals(isH5Login, false)) {
-                    User user = users.get(0);
-                    useName = user.getPocUserName();
-                    passWord = user.getPocPassword();
-                    startLogin();
-
-                    runOnUiThread(() -> {
-                        webView.evaluateJavascript("javascript:login(" + user.getName() + ","
-                                + user.getPassword() + ")", result -> {
-                            // 可选处理返回值
-                            isH5Login = true;
-                        });
-                    });
-                }
             }
 
             @Override
@@ -341,6 +352,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
 
         // 设置 WebChromeClient 以支持 JS 弹窗
         webView.setWebChromeClient(new WebChromeClient() {
+
+            @Override
+            public void onPermissionRequest(PermissionRequest request) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    request.grant(request.getResources());
+                }
+            }
+
             @Override
             public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
                 // 保存回调，后续返回结果给 H5
@@ -782,16 +801,19 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      * 登录
      */
     private void startLogin() {
-        if (isInitPnasUserUtilSuccess && isH5Login) {
+        if (isInitPnasUserUtilSuccess && isH5Login && StrUtil.isNotBlank(useName)) {
             if (!useName.contains("@")) {
                 useName = useName + "@poc.com";
             }
             // Log.i(TAG, "登录的信息 用户名：" + useName + "密码： " + passWord);
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
             PnasGisUtil.getInstance().login();
+        } else if (!PnasUserUtil.getInstance().isLogin()) {
+            // PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456",
+            //         "113.204.49.3:8062", null);
+            // PnasGisUtil.getInstance().login();
         }
-        // PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456", "113.204.49.3:8062", null);
-        // PnasGisUtil.getInstance().login();
+        Log.d(TAG, "登录状态： " + PnasUserUtil.getInstance().isLogin());
     }
 
     @Subscribe(threadMode = ThreadMode.MAIN)
@@ -1147,7 +1169,48 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
                         });
             });
         }
+
+        @JavascriptInterface
+        public void startFaceCapture(String configJson) {
+            runOnUiThread(() -> {
+                try {
+                    Intent intent = new Intent(MainActivity.this, FaceCaptureActivity.class);
+                    intent.putExtra("config", configJson);
+                    startActivityForResult(intent, FACE_CAPTURE_REQUEST);
+                } catch (Exception e) {
+                    sendErrorToWeb("启动人脸采集失败: " + e.getMessage());
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String getDeviceInfo() {
+            Map<String, Object> info = new HashMap<>();
+            info.put("manufacturer", Build.MANUFACTURER);
+            info.put("model", Build.MODEL);
+            info.put("androidVersion", Build.VERSION.RELEASE);
+            info.put("sdkVersion", Build.VERSION.SDK_INT);
+
+            android.view.Display display = getWindowManager().getDefaultDisplay();
+            android.graphics.Point size = new android.graphics.Point();
+            display.getSize(size);
+            info.put("screenWidth", size.x);
+            info.put("screenHeight", size.y);
+            info.put("density", getResources().getDisplayMetrics().density);
+            return gson.toJson(info);
+        }
     }
 
+    private void sendErrorToWeb(final String error) {
+        final String jsCode = "if (window.onFaceCaptureError) { window.onFaceCaptureError('" +
+                error.replace("'", "\\'") + "'); }";
+        new Handler(Looper.getMainLooper()).post(() -> {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+                webView.evaluateJavascript(jsCode, null);
+            } else {
+                webView.loadUrl("javascript:" + jsCode);
+            }
+        });
+    }
 
 }

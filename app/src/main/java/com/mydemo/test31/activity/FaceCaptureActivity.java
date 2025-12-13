@@ -2,7 +2,6 @@
 package com.mydemo.test31.activity;
 
 import android.Manifest;
-import android.annotation.SuppressLint;
 import android.app.AlertDialog;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -41,14 +40,14 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
 import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
+import com.google.gson.GsonBuilder;
 import com.mydemo.test31.R;
 
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.lang.reflect.Type;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.HashMap;
@@ -89,10 +88,10 @@ public class FaceCaptureActivity extends AppCompatActivity implements
     private ScaleGestureDetector scaleGestureDetector;
     private Handler mainHandler;
     private CountDownTimer countdownTimer;
-    private final Gson gson = new Gson();
+    private final Gson gson = new GsonBuilder().create();
 
     // 配置参数
-    private Map<String, Object> config = new HashMap<>();
+    private final Map<String, Object> config = new HashMap<>();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -164,22 +163,14 @@ public class FaceCaptureActivity extends AppCompatActivity implements
     }
 
     private void loadConfig() {
-        String configJson = getIntent().getStringExtra("config");
-        if (configJson != null) {
-            Type type = new TypeToken<Map<String, Object>>() {}.getType();
-            config = gson.fromJson(configJson, type);
-        } else {
-            // 默认配置
-            config.put("quality", 0.85);
-            config.put("mode", "photo");
-            config.put("timeout", 30000L);
-            config.put("needSound", true);
-            config.put("maxSize", 1024);
-            config.put("needBase64", true);
-            config.put("autoCapture", false);
-            config.put("countdown", 3);
-        }
-
+        config.put("quality", 0.85);
+        config.put("mode", "photo");
+        config.put("timeout", 30000L);
+        config.put("needSound", true);
+        config.put("maxSize", 1024);
+        config.put("needBase64", true);
+        config.put("autoCapture", false);
+        config.put("countdown", 3);
         // 设置引导文本
         updateGuideText("请保证光线充足，面容整洁的情况下进行人脸识别");
     }
@@ -330,7 +321,7 @@ public class FaceCaptureActivity extends AppCompatActivity implements
             // 准备返回结果
             Map<String, Object> result = prepareResultData(finalBitmap, base64Image, filePath);
 
-            // 回到主线程发送结果
+            // 回到主线程发送结果sendResultAndFinish
             mainHandler.post(() -> sendResultAndFinish(result));
 
             // 释放Bitmap内存
@@ -353,6 +344,38 @@ public class FaceCaptureActivity extends AppCompatActivity implements
                     isPreviewing = true;
                 }
             });
+        }
+    }
+
+    // 如果必须用文件路径，需要将文件复制到WebView可访问的目录
+    private String copyFileToWebAccessibleDir(String originalPath) {
+        try {
+            // WebView可以访问的目录
+            File webDir = new File(getApplicationContext().getFilesDir(), "web_assets");
+            if (!webDir.exists()) {
+                webDir.mkdirs();
+            }
+
+            File originalFile = new File(originalPath);
+            File destFile = new File(webDir, originalFile.getName());
+
+            // 复制文件
+            FileInputStream fis = new FileInputStream(originalFile);
+            FileOutputStream fos = new FileOutputStream(destFile);
+            byte[] buffer = new byte[1024];
+            int length;
+            while ((length = fis.read(buffer)) > 0) {
+                fos.write(buffer, 0, length);
+            }
+            fis.close();
+            fos.close();
+
+            // 返回content:// 或 file:// 路径
+            return destFile.getAbsolutePath();
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
         }
     }
 
@@ -651,8 +674,9 @@ public class FaceCaptureActivity extends AppCompatActivity implements
     }
 
     private void takePicture() {
-        if (camera == null) return;
-
+        if (camera == null) {
+            return;
+        }
         try {
             camera.takePicture(null, null, this);
         } catch (Exception e) {
@@ -722,23 +746,32 @@ public class FaceCaptureActivity extends AppCompatActivity implements
     private Bitmap compressBitmap(Bitmap bitmap) {
         if (bitmap == null) return null;
 
-        int maxSize = 1024; // 默认1024px
-        if (config.containsKey("maxSize")) {
-            maxSize = ((Number) config.get("maxSize")).intValue();
-        }
-
+        final int TARGET_SIZE = 390; // 目标正方形尺寸
         int width = bitmap.getWidth();
         int height = bitmap.getHeight();
 
-        if (width <= maxSize && height <= maxSize) {
-            return bitmap;
+        // 1. 先等比压缩到至少一边为390
+        float scale;
+        if (width > height) {
+            scale = (float) TARGET_SIZE / height;
+        } else {
+            scale = (float) TARGET_SIZE / width;
         }
 
-        float scale = Math.min((float) maxSize / width, (float) maxSize / height);
-        int newWidth = Math.round(width * scale);
-        int newHeight = Math.round(height * scale);
+        int scaledWidth = Math.round(width * scale);
+        int scaledHeight = Math.round(height * scale);
 
-        return Bitmap.createScaledBitmap(bitmap, newWidth, newHeight, true);
+        Bitmap scaledBitmap = Bitmap.createScaledBitmap(bitmap, scaledWidth, scaledHeight, true);
+
+        // 2. 居中裁剪为正方形
+        int x = Math.max(0, (scaledWidth - TARGET_SIZE) / 2);
+        int y = Math.max(0, (scaledHeight - TARGET_SIZE) / 2);
+
+        // 确保不越界
+        int cropWidth = Math.min(TARGET_SIZE, scaledWidth - x);
+        int cropHeight = Math.min(TARGET_SIZE, scaledHeight - y);
+
+        return Bitmap.createBitmap(scaledBitmap, x, y, cropWidth, cropHeight);
     }
 
     private String bitmapToBase64(Bitmap bitmap) {

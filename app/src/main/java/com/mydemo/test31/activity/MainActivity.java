@@ -4,6 +4,7 @@ import static com.mydemo.test31.util.Util.pocUrl;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
+import android.annotation.TargetApi;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -25,12 +26,14 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
+import android.webkit.ConsoleMessage;
 import android.webkit.JavascriptInterface;
 import android.webkit.PermissionRequest;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceError;
 import android.webkit.WebResourceRequest;
+import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
@@ -76,6 +79,7 @@ import com.mydemo.test31.event.ShowCallReminderDialogEvent;
 import com.mydemo.test31.service.KeepAliveService;
 import com.mydemo.test31.util.AndroidVersionUtils;
 import com.mydemo.test31.util.DatabaseManager;
+import com.mydemo.test31.util.FileUploader;
 import com.mydemo.test31.util.InvState;
 import com.mydemo.test31.util.Util;
 
@@ -85,7 +89,9 @@ import org.greenrobot.eventbus.ThreadMode;
 
 import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.lang.reflect.Method;
+import java.nio.charset.StandardCharsets;
 import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Date;
@@ -119,14 +125,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
     public final static String PERMISSION_READ_MEDIA_IMAGES = "android.permission.READ_MEDIA_IMAGES";
     public final static String PERMISSION_MOUNT_UNMOUNT_FILESYSTEMS = "android.permission.MOUNT_UNMOUNT_FILESYSTEMS";
 
-    public final static String[] permissionNeedToCheck = {
-            PERMISSION_READ_PHONE_STATE,           // 读取手机状态
+    public final static String[] permissionNeedToCheck = {PERMISSION_READ_PHONE_STATE,           // 读取手机状态
             PERMISSION_ACCESS_FINE_LOCATION,       // 精确位置
             PERMISSION_ACCESS_COARSE_LOCATION,     // 粗略位置
             PERMISSION_CAMERA,                     // 相机
             PERMISSION_RECORD_AUDIO,               // 录音
-            PERMISSION_READ_MEDIA_IMAGES,
-            PERMISSION_READ_EXTERNAL_STORAGE,      // 读取外部存储
+            PERMISSION_READ_MEDIA_IMAGES, PERMISSION_READ_EXTERNAL_STORAGE,      // 读取外部存储
             PERMISSION_WRITE_EXTERNAL_STORAGE,     // 写入外部存储
             PERMISSION_POST_NOTIFICATIONS,         // 发送通知 (Android 13+)
             PERMISSION_AUDIO_SETTINGS              // 音频设置
@@ -137,15 +141,14 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             return false;
         }
         for (int i = 0; i < permissionList.size(); i++) {
-            if (activity.checkSelfPermission(
-                    permissionList.get(i)) != PackageManager.PERMISSION_GRANTED) {
+            if (activity.checkSelfPermission(permissionList.get(i)) != PackageManager.PERMISSION_GRANTED) {
                 return false;
             }
         }
         return true;
     }
 
-    WebView webView;
+    private WebView webView;
 
     // 建立连接方式 0.语音  1.视频
     private int callType = 0;
@@ -211,13 +214,201 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         // 2. 获取状态栏高度
         statusBarHeight = getStatusBarHeight();
         // 初始化视图
-        initView();
+        // initView();
+
+        webView = findViewById(R.id.webView);
+        setupWebView();
+        // 调试模式下开启 WebView 调试
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
+            WebView.setWebContentsDebuggingEnabled(true);
+        }
+
+        loadLocalWebPage();
+        registerJsInterface();
 
         // 获取 Application 中的数据库管理器
         MyApplication app = (MyApplication) getApplication();
         databaseManager = app.getDatabaseManager();
     }
 
+    private void loadLocalWebPage() {
+        try {
+            // 根据您的 HTML 结构调整路径
+            // String url = "file:///android_asset/xfh5/index.html";
+            // webView.loadUrl(url);
+
+            // 直接加载 assets 中的文件
+            webView.loadUrl(Util.LOGIN_URL);
+            // webView.loadUrl("file:///android_asset/www/index.html");
+        } catch (Exception e) {
+            Log.e("WebView", "加载页面失败", e);
+            Toast.makeText(this, "加载页面失败: " + e.getMessage(), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void setupWebView() {
+        WebSettings webSettings = webView.getSettings();
+
+        // 1. 基础设置
+        webSettings.setJavaScriptEnabled(true);
+        webSettings.setDomStorageEnabled(true);
+        webSettings.setDatabaseEnabled(true);
+
+        // 2. 文件访问权限（关键配置）
+        webSettings.setAllowFileAccess(true);
+        webSettings.setAllowContentAccess(true);
+
+        // 3. 本地文件跨域访问（Android 8.0+ 需要特别注意）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            webSettings.setAllowFileAccessFromFileURLs(true);
+            webSettings.setAllowUniversalAccessFromFileURLs(true);
+        }
+
+        // 4. 缓存设置
+        webSettings.setAppCacheEnabled(true);
+        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
+
+        // 设置 AppCache 路径
+        String cachePath = getApplicationContext().getCacheDir().getAbsolutePath();
+        webSettings.setAppCachePath(cachePath);
+
+        // 5. 视口设置
+        webSettings.setUseWideViewPort(true);
+        webSettings.setLoadWithOverviewMode(true);
+        webSettings.setLayoutAlgorithm(WebSettings.LayoutAlgorithm.NORMAL);
+
+        // 6. 缩放设置
+        webSettings.setSupportZoom(false);
+        webSettings.setBuiltInZoomControls(false);
+        webSettings.setDisplayZoomControls(false);
+
+        // 7. 其他设置
+        webSettings.setSaveFormData(true);
+        webSettings.setSavePassword(true);
+        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
+        webSettings.setMediaPlaybackRequiresUserGesture(false);
+
+        // 8. 启用混合内容（如果加载 HTTPS 内容）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
+        }
+
+        // 9. 设置 UserAgent（可选）
+        String defaultUserAgent = webSettings.getUserAgentString();
+        webSettings.setUserAgentString(defaultUserAgent + " MyApp/1.0");
+
+        // 硬件加速（API 11+）
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
+            webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+        }
+
+        // 关键：不设置任何padding，完全交给H5控制
+        webView.setPadding(0, 0, 0, 0);
+        webView.setFitsSystemWindows(false);
+
+        // 10. 设置 WebViewClient（关键！）
+        webView.setWebViewClient(new CustomWebViewClient());
+
+        // 11. 设置 WebChromeClient
+        webView.setWebChromeClient(new CustomWebChromeClient());
+    }
+
+    // 自定义 WebViewClient 处理资源加载
+    private class CustomWebViewClient extends WebViewClient {
+
+        @Override
+        public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+            return false; // 所有链接都在WebView内打开
+        }
+
+        @Override
+        public void onPageStarted(WebView view, String url, Bitmap favicon) {
+            isPageLoading = true;
+            // 预先注入配置
+            injectPreConfig();
+        }
+
+        /**
+         * 页面加载完成后执行
+         */
+        @Override
+        public void onPageFinished(WebView view, String url) {
+            super.onPageFinished(view, url);
+            long currentTime = System.currentTimeMillis();
+            // 防抖处理：短时间内只执行一次
+            if (currentTime - lastLoadTime < LOAD_INTERVAL) {
+                return;
+            }
+            lastLoadTime = currentTime;
+            // 确保是主页面加载完成，不是子框架
+            if (!isPageLoading || !url.equals(webView.getUrl())) {
+                return;
+            }
+            isPageLoading = false;
+            executePageFinishLogic(url);
+        }
+
+        private void executePageFinishLogic(String url) {
+            Log.d("PageLoad", "最终页面加载完成: " + url);
+
+            // 页面完成后再次确认配置
+            injectFinalConfig();
+        }
+
+        @Override
+        public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
+            // 错误处理时也要保证状态栏正确
+            injectPreConfig();
+        }
+
+        @SuppressWarnings("deprecation")
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, String url) {
+            Log.d("WebView", "请求资源: " + url);
+            return super.shouldInterceptRequest(view, url);
+        }
+
+        @TargetApi(Build.VERSION_CODES.N)
+        @Override
+        public WebResourceResponse shouldInterceptRequest(WebView view, WebResourceRequest request) {
+            Log.d("WebView", "请求资源: " + request.getUrl().toString());
+            return super.shouldInterceptRequest(view, request);
+        }
+
+        @Override
+        public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+            super.onReceivedError(view, errorCode, description, failingUrl);
+            Log.e("WebView", "加载错误: " + description + " URL: " + failingUrl);
+
+            // 显示错误页面
+            String errorHtml = "<html><body><h2>加载失败</h2><p>" + description + "</p></body></html>";
+            view.loadDataWithBaseURL(null, errorHtml, "text/html", "UTF-8", null);
+        }
+    }
+
+    private class CustomWebChromeClient extends WebChromeClient {
+
+        @Override
+        public void onPermissionRequest(PermissionRequest request) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                request.grant(request.getResources());
+            }
+        }
+
+        @Override
+        public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
+            // 保存回调，后续返回结果给 H5
+            MainActivity.this.filePathCallback = filePathCallback;
+            showSelectPicDialog();
+            return true;
+        }
+
+        @Override
+        public boolean onConsoleMessage(ConsoleMessage consoleMessage) {
+            Log.d("WebViewConsole", consoleMessage.message() + " -- Line: " + consoleMessage.lineNumber() + " of " + consoleMessage.sourceId());
+            return true;
+        }
+    }
 
     /**
      * 二维码扫码事件
@@ -241,155 +432,15 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
     }
 
-    /**
-     * 初始化视图
-     */
-    private void initView() {
-        webView = findViewById(R.id.webView);
-        initWebViewSettings();
-        webView.loadUrl(Util.h5Url);
-        // 加载本地文件
-        // webView.loadUrl("file:///android_asset/www/index.html");
-    }
-
-    /**
-     * 初始化 WebView 设置
-     */
-    private void initWebViewSettings() {
-        WebSettings webSettings = webView.getSettings();
-        // 启用 JavaScript
-        webSettings.setJavaScriptEnabled(true);
-        // 设置cookie缓存
-        webSettings.setDomStorageEnabled(true);
-        webSettings.setDatabaseEnabled(true);
-        webSettings.setAppCacheEnabled(true);
-        webSettings.setAppCachePath(getCacheDir().getPath());
-        // 设置缓存策略
-        webSettings.setCacheMode(WebSettings.LOAD_DEFAULT);
-
-        // 支持文件访问
-        webSettings.setAllowFileAccess(true);
-        webSettings.setAllowFileAccessFromFileURLs(true);
-        webSettings.setAllowUniversalAccessFromFileURLs(true);
-
-        // 允许 JS 弹窗
-        webSettings.setJavaScriptCanOpenWindowsAutomatically(true);
-        // 缩放设置
-        webSettings.setSupportZoom(false);
-        webSettings.setBuiltInZoomControls(false);
-        webSettings.setDisplayZoomControls(false);
-        webSettings.setSaveFormData(true);
-        webSettings.setSavePassword(true);
-
-        webSettings.setAllowContentAccess(true);
-
-        // 3. 允许自动播放媒体（可选，避免H5调用摄像头后需要手动触发）
-        webSettings.setMediaPlaybackRequiresUserGesture(false);
-
-        // 视口设置
-        webSettings.setUseWideViewPort(true);
-        webSettings.setLoadWithOverviewMode(true);
-
-        // 允许混合内容（http 和 https 混合加载）
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.LOLLIPOP) {
-            webSettings.setMixedContentMode(WebSettings.MIXED_CONTENT_ALWAYS_ALLOW);
-        }
-
-        // 硬件加速（API 11+）
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB) {
-            webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
-        }
-        // 关键：不设置任何padding，完全交给H5控制
-        webView.setPadding(0, 0, 0, 0);
-        webView.setFitsSystemWindows(false);
-        webView.setWebViewClient(new WebViewClient() {
-
-            @Override
-            public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-                return false; // 所有链接都在WebView内打开
-            }
-
-            @Override
-            public void onPageStarted(WebView view, String url, Bitmap favicon) {
-                isPageLoading = true;
-                // 预先注入配置
-                injectPreConfig();
-            }
-
-            /**
-             * 页面加载完成后执行
-             */
-            @Override
-            public void onPageFinished(WebView view, String url) {
-                super.onPageFinished(view, url);
-                long currentTime = System.currentTimeMillis();
-                // 防抖处理：短时间内只执行一次
-                if (currentTime - lastLoadTime < LOAD_INTERVAL) {
-                    return;
-                }
-                lastLoadTime = currentTime;
-                // 确保是主页面加载完成，不是子框架
-                if (!isPageLoading || !url.equals(webView.getUrl())) {
-                    return;
-                }
-                isPageLoading = false;
-                executePageFinishLogic(url);
-            }
-
-            private void executePageFinishLogic(String url) {
-                Log.d("PageLoad", "最终页面加载完成: " + url);
-
-                // 页面完成后再次确认配置
-                injectFinalConfig();
-            }
-
-            @Override
-            public void onReceivedError(WebView view, WebResourceRequest request, WebResourceError error) {
-                // 错误处理时也要保证状态栏正确
-                injectPreConfig();
-            }
-        });
-
-        // 设置 WebChromeClient 以支持 JS 弹窗
-        webView.setWebChromeClient(new WebChromeClient() {
-
-            @Override
-            public void onPermissionRequest(PermissionRequest request) {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                    request.grant(request.getResources());
-                }
-            }
-
-            @Override
-            public boolean onShowFileChooser(WebView webView, ValueCallback<Uri[]> filePathCallback, FileChooserParams fileChooserParams) {
-                // 保存回调，后续返回结果给 H5
-                MainActivity.this.filePathCallback = filePathCallback;
-                showSelectPicDialog();
-                return true;
-            }
-        });
-        registerJsInterface();
-    }
-
     private void injectPreConfig() {
         String jsCode = "window._androidStatusBarHeight = " + statusBarHeight + ";";
         webView.evaluateJavascript(jsCode, null);
     }
 
     private void injectFinalConfig() {
-        String jsCode = String.format(
-                "if (typeof window.setupAndroidUI === 'function') {" +
-                        "  window.setupAndroidUI({" +
-                        "    statusBarHeight: %d," +
-                        "    isDarkMode: %b," +
-                        "    platform: 'android'" +
-                        "  });" +
-                        "}",
-                statusBarHeight, !isLightStatusBar()
-        );
+        String jsCode = String.format("if (typeof window.setupAndroidUI === 'function') {" + "  window.setupAndroidUI({" + "    statusBarHeight: %d," + "    isDarkMode: %b," + "    platform: 'android'" + "  });" + "}", statusBarHeight, !isLightStatusBar());
         webView.evaluateJavascript(jsCode, null);
     }
-
 
     // 生成保存照片的临时文件
     //  private File createImageFile() throws IOException {
@@ -412,11 +463,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         if (storageDir != null && !storageDir.exists()) {
             storageDir.mkdirs();
         }
-        return File.createTempFile(
-                imageFileName,
-                ".jpg",
-                storageDir
-        );
+        return File.createTempFile(imageFileName, ".jpg", storageDir);
     }
 
 
@@ -452,12 +499,9 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      */
     private void goCameraFun() {
         // 检查相机权限
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA)
-                != PackageManager.PERMISSION_GRANTED) {
+        if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
             // 请求相机权限
-            ActivityCompat.requestPermissions(this,
-                    new String[]{Manifest.permission.CAMERA},
-                    REQUEST_CAMERA_PERMISSION);
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, REQUEST_CAMERA_PERMISSION);
             return;
         }
         // 已有权限，直接启动相机
@@ -487,17 +531,12 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             }
 
             // 通过FileProvider生成Uri
-            photoUri = FileProvider.getUriForFile(
-                    MainActivity.this,
-                    "com.mydemo.test31.fileprovider",
-                    photoFile
-            );
+            photoUri = FileProvider.getUriForFile(MainActivity.this, "com.mydemo.test31.fileprovider", photoFile);
 
             Log.d(TAG, "相机文件URI: " + photoUri.toString());
 
             // 授予临时权限并启动相机
-            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION |
-                    Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
+            takePictureIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
             takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
 
             startActivityForResult(takePictureIntent, REQUEST_TAKE_PHOTO);
@@ -556,8 +595,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      * 通过反射检测鸿蒙特有类
      */
     private boolean checkHarmonyByReflection() {
-        String[] harmonyClasses = {
-                "ohos.system.version.SystemVersion",           // 鸿蒙系统版本类
+        String[] harmonyClasses = {"ohos.system.version.SystemVersion",           // 鸿蒙系统版本类
                 "ohos.aafwk.ability.Ability",                  // 鸿蒙Ability框架
                 "ohos.app.Context",                            // 鸿蒙上下文
                 "ohos.global.configuration.Configuration",     // 鸿蒙配置类
@@ -590,8 +628,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      * 打开相册
      */
     private void goAlbum() {
-        Intent pickIntent = new Intent(Intent.ACTION_PICK,
-                MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        Intent pickIntent = new Intent(Intent.ACTION_PICK, MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
         pickIntent.setType("image/* video/*"); // 只选择图片
         startActivityForResult(pickIntent, FILE_CHOOSER_REQUEST_CODE);
     }
@@ -663,8 +700,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         for (int i = 0; i < permissions.length; i++) {
             String permission = permissions[i];
             // 发送通知 (Android 13+)
-            if (PERMISSION_POST_NOTIFICATIONS.equals(permission) &&
-                    Long.parseLong(AndroidVersionUtils.getVersionRelease()) < 13) {
+            if (PERMISSION_POST_NOTIFICATIONS.equals(permission) && Long.parseLong(AndroidVersionUtils.getVersionRelease()) < 13) {
                 continue;
             }
             // if (grantResults[i] != PackageManager.PERMISSION_GRANTED) {
@@ -750,6 +786,94 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             // 重置 photoUri，避免重复使用
             photoUri = null;
         }
+
+        // 人脸识别图片上传
+        if (requestCode == FACE_CAPTURE_REQUEST) {
+            if (resultCode == RESULT_OK && data != null) {
+                // 获取返回的数据
+                String action = data.getStringExtra("action");
+                if ("capture".equals(action)) {
+                    String base64Image = data.getStringExtra("base64Image");
+                    // 文件路径
+                    String filePath = data.getStringExtra("filePath");
+                    String timestamp = data.getStringExtra("timestamp");
+                    int imageWidth = data.getIntExtra("imageWidth", 0);
+                    int imageHeight = data.getIntExtra("imageHeight", 0);
+                    double quality = data.getDoubleExtra("quality", 0.85);
+                    String cameraFacing = data.getStringExtra("cameraFacing");
+                    if (filePath != null && !filePath.isEmpty()) {
+                        File imageFile = new File(filePath);
+                        if (imageFile.exists()) {
+                            getTokenFromLocalStorage(token -> uploadWithOkHttp(filePath, token));
+                        }
+                    }
+                }
+            } else if (resultCode == RESULT_CANCELED) {
+                String error = data != null ? data.getStringExtra("error") : "用户取消";
+                Log.d("FaceCapture", "拍照取消: " + error);
+            }
+        }
+    }
+
+    // 添加这个方法
+    private void uploadWithOkHttp(String filePath, String token) {
+        FileUploader.getInstance().upload(filePath, Util.FACE_IMAGE_URL, token,
+                new FileUploader.UploadCallback() {
+                    @Override
+                    public void onSuccess(String ajaxResult) {
+                        runOnUiThread(() -> {
+                            // 上传成功，返回结果给WebView
+                            // 调用 JS 中的 returnFaceCapture 方法，并传递参数
+                            String javascript = String.format(
+                                    "javascript:if(window.returnFaceCapture) {" +
+                                            "  window.returnFaceCapture('%s', null);" +
+                                            "} else {" +
+                                            "  alert('回调函数未定义');" +
+                                            "}",
+                                    ajaxResult.replace("'", "\\'")
+                            );
+                            webView.evaluateJavascript(javascript, null);
+                        });
+                    }
+
+                    @Override
+                    public void onError(String error) {
+                        runOnUiThread(() -> {
+                            Toast.makeText(MainActivity.this, "上传失败: " + error, Toast.LENGTH_SHORT).show();
+                        });
+                    }
+                });
+    }
+
+    // 通过JavaScript获取LocalStorage中的Token
+    private void getTokenFromLocalStorage(final ValueCallback<String> callback) {
+        try {
+            // 从assets读取JS文件
+            InputStream is = getAssets().open("js/get_token.js");
+            byte[] buffer = new byte[is.available()];
+            is.read(buffer);
+            is.close();
+            String jsCode = new String(buffer, StandardCharsets.UTF_8);
+            webView.evaluateJavascript(jsCode, value -> handleTokenResult(value, callback));
+        } catch (Exception e) {
+            Log.e("LocalStorage", "读取JS文件失败", e);
+            if (callback != null) callback.onReceiveValue(null);
+        }
+    }
+
+    private void handleTokenResult(String value, ValueCallback<String> callback) {
+        if (value == null || value.equals("null") || value.isEmpty() || value.equals("\"\"")) {
+            Log.d("LocalStorage", "未找到Token");
+            if (callback != null) callback.onReceiveValue(null);
+            return;
+        }
+
+        String token = value.replace("\"", "");
+        Log.d("LocalStorage", "获取到Token: " + token);
+
+        if (callback != null) {
+            callback.onReceiveValue(token);
+        }
     }
 
     private void startAndBindService() {
@@ -809,9 +933,8 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             PnasUserUtil.getInstance().login(useName, passWord, pocUrl, null);
             PnasGisUtil.getInstance().login();
         } else if (!PnasUserUtil.getInstance().isLogin()) {
-            // PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456",
-            //         "113.204.49.3:8062", null);
-            // PnasGisUtil.getInstance().login();
+            PnasUserUtil.getInstance().login("50120202@poc.com", "cq123456", "113.204.49.3:8062", null);
+            PnasGisUtil.getInstance().login();
         }
         Log.d(TAG, "登录状态： " + PnasUserUtil.getInstance().isLogin());
     }
@@ -837,8 +960,6 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         }
     }
 
-    private TrunkingCallSession callSession;
-
     private CallReminderDialog callReminderDialog = null;
 
     /**
@@ -846,20 +967,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
      */
     @Subscribe(threadMode = ThreadMode.MAIN)
     public void onShowCallReminderDialogEvent(ShowCallReminderDialogEvent event) {
-        callSession = event.getCallSession();
+        TrunkingCallSession callSession = event.getCallSession();
         if (Objects.isNull(callSession)) {
             return;
         }
         if (!callSession.isAfterEnded()) {
             // 早期媒体/振铃中
-            if (callSession.isIncoming() && callSession.isBeforeConfirmed()
-                    && callSession.getCallState() == InvState.EARLY) {
+            if (callSession.isIncoming() && callSession.isBeforeConfirmed() && callSession.getCallState() == InvState.EARLY) {
                 // 弹窗
                 acceptDialog(event.callId, callSession);
             } else if (callSession.getCallState() == InvState.CONFIRMED) {
                 // 自己接听：callState = 4 接听  对方接听：callState = 5 接听
-                OpenVideoActivityEvent openVideoActivityEvent = new OpenVideoActivityEvent(event.callId,
-                        event.callSession);
+                OpenVideoActivityEvent openVideoActivityEvent = new OpenVideoActivityEvent(event.callId, event.callSession);
                 EventBus.getDefault().post(openVideoActivityEvent);
             }
         } else if (callSession.getCallState() == InvState.DISCONNECTED) {
@@ -1060,8 +1179,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
          * 登录poc
          */
         @JavascriptInterface
-        public void loginPoc(String userName, String password,
-                             String pocUserUser, String pocPasswd) {
+        public void loginPoc(String userName, String password, String pocUserUser, String pocPasswd) {
             useName = userName;
             passWord = password;
             isH5Login = true;
@@ -1076,8 +1194,7 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
          */
         @JavascriptInterface
         public void relogin() {
-            Toast.makeText(MainActivity.this, "重新登录：用户名："
-                    + useName + "密码： " + passWord, Toast.LENGTH_SHORT).show();
+            Toast.makeText(MainActivity.this, "重新登录：用户名：" + useName + "密码： " + passWord, Toast.LENGTH_SHORT).show();
             if (!Objects.isNull(useName)) {
                 isH5Login = true;
                 PnasUserUtil instance = PnasUserUtil.getInstance();
@@ -1106,11 +1223,10 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         public void callJsFunction() {
             runOnUiThread(() -> {
                 // 调用 JS 中的 showMessage 方法，并传递参数
-                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')",
-                        result -> {
-                            // JS 方法的返回值（可选处理）
-                            Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
-                        });
+                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')", result -> {
+                    // JS 方法的返回值（可选处理）
+                    Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
+                });
             });
         }
 
@@ -1162,20 +1278,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
         public void defaultLogin() {
             runOnUiThread(() -> {
                 // 调用 JS 中的 showMessage 方法，并传递参数
-                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')",
-                        result -> {
-                            // JS 方法的返回值（可选处理）
-                            Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
-                        });
+                webView.evaluateJavascript("javascript:showMessage('来自 Android 原生的调用')", result -> {
+                    // JS 方法的返回值（可选处理）
+                    Toast.makeText(MainActivity.this, "JS 返回：" + result, Toast.LENGTH_SHORT).show();
+                });
             });
         }
 
         @JavascriptInterface
-        public void startFaceCapture(String configJson) {
+        public void startFaceCapture() {
             runOnUiThread(() -> {
                 try {
                     Intent intent = new Intent(MainActivity.this, FaceCaptureActivity.class);
-                    intent.putExtra("config", configJson);
                     startActivityForResult(intent, FACE_CAPTURE_REQUEST);
                 } catch (Exception e) {
                     sendErrorToWeb("启动人脸采集失败: " + e.getMessage());
@@ -1199,11 +1313,18 @@ public class MainActivity extends AppCompatActivity implements View.OnTouchListe
             info.put("density", getResources().getDisplayMetrics().density);
             return gson.toJson(info);
         }
+
+        @JavascriptInterface
+        public void faceResult(String result) {
+            Log.d("AndroidNative", "收到JS回调: " + result);
+            runOnUiThread(() -> {
+                System.out.println(result);
+            });
+        }
     }
 
     private void sendErrorToWeb(final String error) {
-        final String jsCode = "if (window.onFaceCaptureError) { window.onFaceCaptureError('" +
-                error.replace("'", "\\'") + "'); }";
+        final String jsCode = "if (window.onFaceCaptureError) { window.onFaceCaptureError('" + error.replace("'", "\\'") + "'); }";
         new Handler(Looper.getMainLooper()).post(() -> {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) {
                 webView.evaluateJavascript(jsCode, null);

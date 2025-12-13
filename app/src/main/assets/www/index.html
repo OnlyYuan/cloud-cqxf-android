@@ -16,7 +16,11 @@
     }
 
     function startFaceCapture(){
-        alert(AndroidNative.startFaceCapture(null));
+        AndroidNative.startFaceCapture()
+    }
+
+    function returnFaceCapture(photoFile){
+        alert(photoFile);
     }
 </script>
 </html>

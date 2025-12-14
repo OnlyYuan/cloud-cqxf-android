@@ -5,13 +5,13 @@ plugins {
 android {
     signingConfigs {
         debug {
-            storeFile file('D:\\AndroidStudioProjects\\cloud-cqxf-android\\key1.jks')
+            storeFile file('/Users/chenlin/StudioProjects/cloud-cqxf-android/key1.jks')
             storePassword '1234567'
             keyAlias 'key0'
             keyPassword '1234567'
         }
         release {
-            storeFile file('D:\\AndroidStudioProjects\\cloud-cqxf-android\\key1.jks')
+            storeFile file('/Users/chenlin/StudioProjects/cloud-cqxf-android/key1.jks')
             storePassword '1234567'
             keyAlias 'key0'
             keyPassword '1234567'
@@ -21,7 +21,7 @@ android {
     buildToolsVersion "30.0.3"
 
     defaultConfig {
-        applicationId "com.mydemo.test31"
+        applicationId "com.xycm.cqxf"
         minSdkVersion 23
         targetSdkVersion 30
         versionCode 1
@@ -34,9 +34,16 @@ android {
     }
 
     buildTypes {
+        debug {
+            debuggable true
+            signingConfig signingConfigs.debug
+        }
+
         release {
+            debuggable false
             minifyEnabled false
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'),
+                    'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }

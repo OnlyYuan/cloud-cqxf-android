@@ -62,7 +62,7 @@
             android:layout_centerInParent="true" />
 
         <!-- 白色遮罩层（中间挖空圆形） -->
-        <com.mydemo.test31.view.WhiteCircleMaskView
+        <com.xycm.cqxf.view.WhiteCircleMaskView
             android:id="@+id/maskView"
             android:layout_width="match_parent"
             android:layout_height="match_parent" />

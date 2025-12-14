@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    package="com.mydemo.test31">
+    package="com.xycm.cqxf">
 
     <!-- 摄像头特性 -->
     <uses-feature
@@ -50,7 +50,7 @@
     <uses-permission android:name="android.permission.MOUNT_UNMOUNT_FILESYSTEMS" />
 
     <application
-        android:name=".MyApplication"
+        android:name="com.xycm.cqxf.MyApplication"
         android:allowBackup="false"
         android:hardwareAccelerated="true"
         android:icon="@mipmap/ic_launcher"
@@ -72,7 +72,7 @@
 
         <!-- =========================================== activity =========================================== -->
         <activity
-            android:name=".activity.MainActivity"
+            android:name="com.xycm.cqxf.activity.MainActivity"
             android:exported="true"
             android:launchMode="standard"
             android:screenOrientation="portrait">
@@ -83,18 +83,18 @@
         </activity>
 
         <activity
-            android:name=".activity.MessageUiActivity"
+            android:name="com.xycm.cqxf.activity.MessageUiActivity"
             android:exported="true"
             android:screenOrientation="portrait" />
 
         <activity
-            android:name=".activity.CameraQRScannerActivity"
+            android:name="com.xycm.cqxf.activity.CameraQRScannerActivity"
             android:screenOrientation="portrait"
             android:theme="@style/Theme.AppCompat.Light.NoActionBar" />
 
         <!-- 可选，适合来电界面 -->
         <activity
-            android:name=".activity.IncomingCallActivity"
+            android:name="com.xycm.cqxf.activity.IncomingCallActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="Incoming Call"
             android:screenOrientation="portrait"
@@ -102,7 +102,7 @@
 
         <!-- 人脸采集Activity -->
         <activity
-            android:name=".activity.FaceCaptureActivity"
+            android:name="com.xycm.cqxf.activity.FaceCaptureActivity"
             android:configChanges="orientation|screenSize|keyboardHidden"
             android:screenOrientation="portrait"
             android:exported="false" />
@@ -111,36 +111,36 @@
         <!-- =========================================== 服务类 =========================================== -->
         <!-- 来电服务 -->
         <service
-            android:name=".service.IncomingCallService"
+            android:name="com.xycm.cqxf.service.IncomingCallService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
         <!-- 信息服务 -->
         <service
-            android:name=".service.MessageUiService"
+            android:name="com.xycm.cqxf.service.MessageUiService"
             android:enabled="true"
             android:exported="false" />
 
         <service
-            android:name=".service.KeepAliveService"
+            android:name="com.xycm.cqxf.service.KeepAliveService"
             android:enabled="true"
             android:exported="false" />
         <!-- =========================================== 服务类 =========================================== -->
         <receiver
-            android:name=".callback.CallReceiver"
+            android:name="com.xycm.cqxf.callback.CallReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.mydemo.test31.ACTION_ANSWER_CALL" />
-                <action android:name="com.mydemo.test31.ACTION_REJECT_CALL" />
+                <action android:name="com.xycm.test31.ACTION_ANSWER_CALL" />
+                <action android:name="com.xycm.test31.ACTION_REJECT_CALL" />
             </intent-filter>
         </receiver>
 
         <!-- FileProvider配置，用于生成安全的文件Uri -->
         <provider
-            android:name="com.mydemo.test31.util.MyProvider"
-            android:authorities="com.mydemo.test31.fileprovider"
+            android:name="com.xycm.cqxf.util.MyProvider"
+            android:authorities="com.xycm.cqxf.fileprovider"
             android:exported="false"
             android:grantUriPermissions="true">
             <meta-data

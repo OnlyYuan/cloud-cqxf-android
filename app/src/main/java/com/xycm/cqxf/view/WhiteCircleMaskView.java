@@ -10,6 +10,9 @@ import android.graphics.PorterDuffXfermode;
 import android.util.AttributeSet;
 import android.view.View;
 
+/**
+ * 自定义白色圆形遮罩视图
+ */
 public class WhiteCircleMaskView extends View {
 
     private Paint whitePaint;
@@ -17,6 +20,9 @@ public class WhiteCircleMaskView extends View {
     private Path clipPath;
     private int circleRadius = 140; // dp
     private int maskColor = 0xFFFFFFFF; // 白色
+
+    private int radiusPx; // 像素单位的圆半径
+    private float density; // 屏幕密度
 
     public WhiteCircleMaskView(Context context) {
         super(context);
@@ -43,6 +49,24 @@ public class WhiteCircleMaskView extends View {
 
         // 启用硬件加速
         setLayerType(LAYER_TYPE_HARDWARE, null);
+
+        // 获取屏幕密度，仅计算一次
+        density = getResources().getDisplayMetrics().density;
+    }
+
+    @Override
+    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
+        super.onSizeChanged(w, h, oldw, oldh);
+
+        // 计算圆的半径（像素单位）
+        radiusPx = (int) (circleRadius * density);
+
+        // 创建圆形裁剪路径
+        clipPath.reset();
+        int centerX = w / 2;
+        int centerY = h / 2;
+        clipPath.addCircle(centerX, centerY, radiusPx, Path.Direction.CW);
+        clipPath.setFillType(Path.FillType.INVERSE_WINDING);
     }
 
     @Override
@@ -58,8 +82,6 @@ public class WhiteCircleMaskView extends View {
         // 在中心挖一个圆形
         int centerX = getWidth() / 2;
         int centerY = getHeight() / 2;
-        float density = getResources().getDisplayMetrics().density;
-        int radiusPx = (int) (circleRadius * density);
 
         // 挖空圆形
         canvas.drawCircle(centerX, centerY, radiusPx, clearPaint);
@@ -67,29 +89,30 @@ public class WhiteCircleMaskView extends View {
         canvas.restoreToCount(saveCount);
     }
 
-    @Override
-    protected void onSizeChanged(int w, int h, int oldw, int oldh) {
-        super.onSizeChanged(w, h, oldw, oldh);
-
-        // 创建圆形裁剪路径
-        clipPath.reset();
-        int centerX = w / 2;
-        int centerY = h / 2;
-        float density = getResources().getDisplayMetrics().density;
-        int radiusPx = (int) (circleRadius * density);
-
-        clipPath.addCircle(centerX, centerY, radiusPx, Path.Direction.CW);
-        clipPath.setFillType(Path.FillType.INVERSE_WINDING);
-    }
-
+    /**
+     * 设置圆形半径
+     *
+     * @param radiusDp 圆的半径，单位 dp
+     */
     public void setCircleRadius(int radiusDp) {
-        this.circleRadius = radiusDp;
-        invalidate();
+        if (this.circleRadius != radiusDp) {
+            this.circleRadius = radiusDp;
+            // 计算像素值
+            radiusPx = (int) (circleRadius * density);
+            invalidate(); // 只有当值改变时才触发重绘
+        }
     }
 
+    /**
+     * 设置遮罩颜色
+     *
+     * @param color 颜色值
+     */
     public void setMaskColor(int color) {
-        this.maskColor = color;
-        whitePaint.setColor(color);
-        invalidate();
+        if (this.maskColor != color) {
+            this.maskColor = color;
+            whitePaint.setColor(color);
+            invalidate(); // 只有当颜色改变时才触发重绘
+        }
     }
 }

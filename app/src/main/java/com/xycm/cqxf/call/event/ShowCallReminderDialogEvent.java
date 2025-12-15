@@ -1,7 +1,10 @@
-package com.xycm.cqxf.event;
+package com.xycm.cqxf.call.event;
 
 import com.mpttpnas.api.TrunkingCallSession;
 
+/**
+ * 来电提醒事件
+ */
 public class ShowCallReminderDialogEvent {
 
     // 可以添加需要传递的数据

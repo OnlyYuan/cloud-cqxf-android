@@ -5,13 +5,13 @@ plugins {
 android {
     signingConfigs {
         debug {
-            storeFile file('/Users/chenlin/StudioProjects/cloud-cqxf-android/key1.jks')
+            storeFile file('D:\\AndroidStudioProjects\\cloud-cqxf-android\\key1.jks')
             storePassword '1234567'
             keyAlias 'key0'
             keyPassword '1234567'
         }
         release {
-            storeFile file('/Users/chenlin/StudioProjects/cloud-cqxf-android/key1.jks')
+            storeFile file('D:\\AndroidStudioProjects\\cloud-cqxf-android\\key1.jks')
             storePassword '1234567'
             keyAlias 'key0'
             keyPassword '1234567'

@@ -1,4 +1,4 @@
-package com.xycm.cqxf.dialog;
+package com.xycm.cqxf.call.incoming;
 
 import android.app.Dialog;
 import android.graphics.Color;
@@ -29,6 +29,9 @@ import com.xycm.cqxf.R;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * 来电提醒对话框
+ */
 public class CallReminderDialog extends DialogFragment {
 
     private final TrunkingCallSession callSession;

@@ -1,6 +1,5 @@
-package com.xycm.cqxf.callback;
+package com.xycm.cqxf.call.receiver;
 
-import static com.xycm.cqxf.service.KeepAliveService.NOTIFICATION_ID_CALL;
 
 import android.app.NotificationManager;
 import android.content.BroadcastReceiver;
@@ -12,11 +11,15 @@ import com.mpttpnas.api.TrunkingCallSession;
 import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 import com.xycm.cqxf.activity.MessageUiActivity;
 
+/**
+ * 监听通话状态变化
+ */
 public class CallReceiver extends BroadcastReceiver {
+
     private static final String TAG = "CallReceiver";
 
-    public static final String ACTION_ANSWER_CALL = "com.xycm.test31.ACTION_ANSWER_CALL";
-    public static final String ACTION_REJECT_CALL = "com.xycm.test31.ACTION_REJECT_CALL";
+    public static final String ACTION_ANSWER_CALL = "com.xycm.cqxf.call.ACTION_ANSWER_CALL";
+    public static final String ACTION_REJECT_CALL = "com.xycm.cqxf.call.ACTION_REJECT_CALL";
 
     // 额外参数键名
     private static final String EXTRA_CALL_SESSION = "callSession";
@@ -89,8 +92,8 @@ public class CallReceiver extends BroadcastReceiver {
             NotificationManager notificationManager =
                     (NotificationManager) context.getSystemService(Context.NOTIFICATION_SERVICE);
             if (notificationManager != null) {
-                notificationManager.cancel(NOTIFICATION_ID_CALL);
-                Log.d(TAG, "Cancelled notification: " + NOTIFICATION_ID_CALL);
+                notificationManager.cancel(1002);
+                Log.d(TAG, "Cancelled notification: " + 1002);
             }
         } catch (Exception e) {
             Log.e(TAG, "Failed to cancel notification", e);

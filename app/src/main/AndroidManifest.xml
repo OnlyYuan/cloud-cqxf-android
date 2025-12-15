@@ -65,11 +65,15 @@
         android:turnScreenOn="true"
         android:usesCleartextTraffic="true">
 
-        <!-- 设置key -->
+        <!-- 开发 -->
+        <!-- <meta-data
+            android:name="com.amap.api.v2.apikey"
+            android:value="9ce127d767e4f95d8fe9376c17f3a3e5" /> -->
+
+        <!-- 生产 -->
         <meta-data
             android:name="com.amap.api.v2.apikey"
-            android:value="9ce127d767e4f95d8fe9376c17f3a3e5" />
-
+            android:value="0171b40c3b385aed58fee58250a33d38" />
         <!-- =========================================== activity =========================================== -->
         <activity
             android:name="com.xycm.cqxf.activity.MainActivity"
@@ -94,7 +98,9 @@
 
         <!-- 可选，适合来电界面 -->
         <activity
-            android:name="com.xycm.cqxf.activity.IncomingCallActivity"
+            android:showOnLockScreen="true"
+            android:turnScreenOn="true"
+            android:name="com.xycm.cqxf.call.incoming.IncomingCallActivity"
             android:configChanges="orientation|keyboardHidden|screenSize"
             android:label="Incoming Call"
             android:screenOrientation="portrait"
@@ -111,7 +117,7 @@
         <!-- =========================================== 服务类 =========================================== -->
         <!-- 来电服务 -->
         <service
-            android:name="com.xycm.cqxf.service.IncomingCallService"
+            android:name="com.xycm.cqxf.call.service.IncomingCallService"
             android:enabled="true"
             android:exported="false"
             android:foregroundServiceType="dataSync" />
@@ -123,17 +129,18 @@
             android:exported="false" />
 
         <service
-            android:name="com.xycm.cqxf.service.KeepAliveService"
+            android:foregroundServiceType="phoneCall|location|dataSync"
+            android:name="com.xycm.cqxf.call.service.KeepAliveService"
             android:enabled="true"
             android:exported="false" />
         <!-- =========================================== 服务类 =========================================== -->
         <receiver
-            android:name="com.xycm.cqxf.callback.CallReceiver"
+            android:name="com.xycm.cqxf.call.receiver.CallReceiver"
             android:enabled="true"
             android:exported="false">
             <intent-filter>
-                <action android:name="com.xycm.test31.ACTION_ANSWER_CALL" />
-                <action android:name="com.xycm.test31.ACTION_REJECT_CALL" />
+                <action android:name="com.xycm.cqxf.call.ACTION_ANSWER_CALL" />
+                <action android:name="com.xycm.cqxf.call.ACTION_REJECT_CALL" />
             </intent-filter>
         </receiver>
 

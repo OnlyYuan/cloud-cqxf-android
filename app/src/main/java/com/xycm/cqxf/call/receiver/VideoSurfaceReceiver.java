@@ -1,4 +1,4 @@
-package com.xycm.cqxf.callback;
+package com.xycm.cqxf.call.receiver;
 
 import android.util.Log;
 import android.view.SurfaceHolder;
@@ -6,13 +6,16 @@ import android.view.SurfaceHolder;
 import com.mptt.media.api.MediaEngineApiUtil;
 import com.mpttpnas.pnaslibraryapi.PnasCallUtil;
 
-public class VideoSurfaceCallback implements SurfaceHolder.Callback {
+/**
+ * 视频流状态变化接收器
+ */
+public class VideoSurfaceReceiver implements SurfaceHolder.Callback {
 
     private final String THIS_FILE = "VideoSurfaceCallback";
 
     private int type = MediaEngineApiUtil.LAUNCH_LOCAL_VIDEO;
 
-    public VideoSurfaceCallback(int type) {
+    public VideoSurfaceReceiver(int type) {
         this.type = type;
     }
 

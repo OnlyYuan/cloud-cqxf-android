@@ -25,7 +25,7 @@ import com.mpttpnas.pnaslibraryapi.callback.FloorStateChangedCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.GroupAffiliactionNotifyResultCallbackEvent;
 import com.mpttpnas.pnaslibraryapi.callback.StandbyGroupInfoChangedCallbackEvent;
 import com.xycm.cqxf.R;
-import com.xycm.cqxf.callback.VideoSurfaceCallback;
+import com.xycm.cqxf.call.receiver.VideoSurfaceReceiver;
 import com.xycm.cqxf.event.CloseVideoActivityEvent;
 import com.xycm.cqxf.event.OpenVideoActivityEvent;
 import com.xycm.cqxf.util.MicMuteManager;
@@ -306,7 +306,7 @@ public class MessageUiActivity extends AppCompatActivity {
         if (remoteRenderView != null) {
             remoteRenderView.getHolder().removeCallback(null);
             loVideo.addView(remoteRenderView, 0);
-            remoteRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
+            remoteRenderView.getHolder().addCallback(new VideoSurfaceReceiver(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
             remoteRenderView.setVisibility(View.VISIBLE);
         }
     }
@@ -318,7 +318,7 @@ public class MessageUiActivity extends AppCompatActivity {
         if (remoteRenderView != null) {
             remoteRenderView.getHolder().removeCallback(null);
             smallVideoView.addView(remoteRenderView);
-            remoteRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
+            remoteRenderView.getHolder().addCallback(new VideoSurfaceReceiver(PnasCallUtil.VideoCallWindow.LAUNCH_REMOTE_VIDEO));
             remoteRenderView.setVisibility(View.VISIBLE);
         }
     }
@@ -330,7 +330,7 @@ public class MessageUiActivity extends AppCompatActivity {
         if (localRenderView != null) {
             localRenderView.getHolder().removeCallback(null);
             loVideo.addView(localRenderView, 0);
-            localRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_LOCAL_VIDEO));
+            localRenderView.getHolder().addCallback(new VideoSurfaceReceiver(PnasCallUtil.VideoCallWindow.LAUNCH_LOCAL_VIDEO));
             localRenderView.setVisibility(View.VISIBLE);
         }
     }
@@ -342,7 +342,7 @@ public class MessageUiActivity extends AppCompatActivity {
         if (localRenderView != null) {
             localRenderView.getHolder().removeCallback(null);
             smallVideoView.addView(localRenderView);
-            localRenderView.getHolder().addCallback(new VideoSurfaceCallback(PnasCallUtil.VideoCallWindow.LAUNCH_LOCAL_VIDEO));
+            localRenderView.getHolder().addCallback(new VideoSurfaceReceiver(PnasCallUtil.VideoCallWindow.LAUNCH_LOCAL_VIDEO));
             localRenderView.setVisibility(View.VISIBLE);
         }
     }

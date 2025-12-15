@@ -1,8 +1,12 @@
-package com.xycm.cqxf.event;
+package com.xycm.cqxf.call.event;
 
 import com.mpttpnas.api.TrunkingCallSession;
 
+/**
+ * 通话行为事件（接听、拒接等）
+ */
 public class CallActionEvent {
+
     public static final int ACTION_ANSWER = 1;
     public static final int ACTION_REJECT = 2;
 
